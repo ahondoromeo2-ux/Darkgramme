@@ -1,4 +1,4 @@
-// --- IMPORTATIONS FIREBASE (Via CDN pour GitHub Pages) ---
+// --- IMPORTATIONS FIREBASE ---
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
 import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 import { getFirestore, doc, setDoc } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
@@ -13,7 +13,7 @@ const firebaseConfig = {
   appId: "1:484185842451:web:2b7f9dcbfbc0b642ecf0e6"
 };
 
-// Initialisation de Firebase
+// Initialisation
 const app = initializeApp(firebaseConfig);
 export const auth = getAuth(app);
 export const db = getFirestore(app);
@@ -32,12 +32,22 @@ document.getElementById('go-to-login').addEventListener('click', () => {
     loginForm.classList.remove('hidden');
 });
 
-// --- LOGIQUE DE L'INTERFACE (Barre de navigation du bas) ---
+// --- LOGIQUE DE NAVIGATION DYNAMIQUE (Changement de page) ---
 const navItems = document.querySelectorAll('.nav-item');
+const views = document.querySelectorAll('.view');
+
 navItems.forEach(item => {
     item.addEventListener('click', function() {
+        // 1. Changer le bouton actif visuellement
         navItems.forEach(nav => nav.classList.remove('active'));
         this.classList.add('active');
+        
+        // 2. Masquer toutes les vues (pages)
+        views.forEach(view => view.classList.add('hidden'));
+        
+        // 3. Afficher uniquement la vue sélectionnée
+        const targetView = this.getAttribute('data-view');
+        document.getElementById(`view-${targetView}`).classList.remove('hidden');
     });
 });
 
@@ -47,12 +57,10 @@ const appScreen = document.getElementById('app-screen');
 
 onAuthStateChanged(auth, (user) => {
     if (user) {
-        // Utilisateur connecté -> On bascule sur l'application Darkgramme
         authScreen.classList.add('hidden');
         appScreen.classList.remove('hidden');
-        console.log("Bienvenue sur Darkgramme ! Connecté :", user.email);
+        console.log("Connecté sur Darkgramme !");
     } else {
-        // Utilisateur déconnecté -> On affiche l'écran de connexion
         authScreen.classList.remove('hidden');
         appScreen.classList.add('hidden');
     }
@@ -67,11 +75,9 @@ document.getElementById('btn-signup').addEventListener('click', async () => {
     if(!pseudo || !email || !password) return alert("Veuillez remplir tous les champs.");
 
     try {
-        // 1. Création du compte utilisateur dans Firebase Auth
         const userCredential = await createUserWithEmailAndPassword(auth, email, password);
         const user = userCredential.user;
 
-        // 2. Création de son profil dans la base de données Firestore
         await setDoc(doc(db, "users", user.uid), {
             pseudo: pseudo,
             email: email,
@@ -81,7 +87,6 @@ document.getElementById('btn-signup').addEventListener('click', async () => {
         });
         
         alert("Compte créé avec succès !");
-
     } catch (error) {
         alert("Erreur d'inscription : " + error.message);
     }
@@ -100,5 +105,3 @@ document.getElementById('btn-login').addEventListener('click', async () => {
         alert("Erreur de connexion : " + error.message);
     }
 });
-
-console.log("Le moteur de Darkgramme est configuré et prêt.");
