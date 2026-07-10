@@ -57,7 +57,7 @@
                 <p class="placeholder-text">Chercher des amis ou des publications.</p>
             </div>
 
-            <!-- 3. ÉCRAN PUBLIER (MIS À ZONE AVEC LE FORMULAIRE) -->
+            <!-- 3. ÉCRAN PUBLIER -->
             <div id="view-post" class="view hidden">
                 <h2>Créer un post</h2>
                 <div class="post-form">
@@ -67,10 +67,20 @@
                 </div>
             </div>
 
-            <!-- 4. ÉCRAN NOTIFICATIONS -->
-            <div id="view-notifications" class="view hidden">
-                <h2>Notifications</h2>
-                <p class="placeholder-text">Tes mentions J'aime et commentaires.</p>
+            <!-- 4. ÉCRAN DE L'ASSISTANT IA (LOX) -->
+            <div id="view-lox" class="view hidden">
+                <h2>Assistant Lox</h2>
+                <div class="chat-container">
+                    <div class="chat-messages" id="lox-chat-messages">
+                        <div class="message lox-msg">
+                            <strong>Lox :</strong> Salut ! Je suis ton assistant IA intégré. Je peux t'aider à naviguer, générer des idées de posts ou simplement discuter. Essaie de me dire "ouvre mon profil" !
+                        </div>
+                    </div>
+                    <div class="chat-input-row">
+                        <input type="text" id="lox-input" placeholder="Discuter ou donner un ordre à Lox...">
+                        <button id="btn-lox-send"><i class="fa-solid fa-paper-plane"></i></button>
+                    </div>
+                </div>
             </div>
 
             <!-- 5. ÉCRAN PROFIL -->
@@ -107,7 +117,7 @@
             <button class="nav-item active" data-view="home"><i class="fa-solid fa-house"></i></button>
             <button class="nav-item" data-view="search"><i class="fa-solid fa-magnifying-glass"></i></button>
             <button class="nav-item" data-view="post"><i class="fa-regular fa-square-plus"></i></button>
-            <button class="nav-item" data-view="notifications"><i class="fa-solid fa-heart"></i></button>
+            <button class="nav-item" data-view="lox"><i class="fa-solid fa-robot"></i></button>
             <button class="nav-item profile-icon" data-view="profile"><i class="fa-solid fa-circle-user"></i></button>
         </nav>
     </div>
