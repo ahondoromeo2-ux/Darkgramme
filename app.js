@@ -1,17 +1,19 @@
+// --- IMPORTATIONS FIREBASE (Via CDN pour GitHub Pages) ---
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
 import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 import { getFirestore, doc, setDoc } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
-// --- CONFIGURATION FIREBASE ---
+// --- CONFIGURATION FIREBASE DE DARKGRAMME ---
 const firebaseConfig = {
-  apiKey: "TA_CLE_API",
-  authDomain: "ton-projet.firebaseapp.com",
-  projectId: "ton-projet",
-  storageBucket: "ton-projet.appspot.com",
-  messagingSenderId: "ton-id",
-  appId: "ton-app-id"
+  apiKey: "AIzaSyDqRXprLqWjYXw1HDhcsdFTGItQV1Nbsaw",
+  authDomain: "darkgramme-eaafa.firebaseapp.com",
+  projectId: "darkgramme-eaafa",
+  storageBucket: "darkgramme-eaafa.firebasestorage.app",
+  messagingSenderId: "484185842451",
+  appId: "1:484185842451:web:2b7f9dcbfbc0b642ecf0e6"
 };
 
+// Initialisation de Firebase
 const app = initializeApp(firebaseConfig);
 export const auth = getAuth(app);
 export const db = getFirestore(app);
@@ -30,7 +32,7 @@ document.getElementById('go-to-login').addEventListener('click', () => {
     loginForm.classList.remove('hidden');
 });
 
-// --- LOGIQUE DE L'APPLICATION (Barre du bas) ---
+// --- LOGIQUE DE L'INTERFACE (Barre de navigation du bas) ---
 const navItems = document.querySelectorAll('.nav-item');
 navItems.forEach(item => {
     item.addEventListener('click', function() {
@@ -39,26 +41,24 @@ navItems.forEach(item => {
     });
 });
 
-// --- CODE DE CONNEXION / INSCRIPTION REEL ---
-
-// 1. Surveillance de l'état de l'utilisateur (Es-tu connecté ou déconnecté ?)
+// --- SURVEILLANCE DE L'ÉTAT DE L'UTILISATEUR ---
 const authScreen = document.getElementById('auth-screen');
 const appScreen = document.getElementById('app-screen');
 
 onAuthStateChanged(auth, (user) => {
     if (user) {
-        // L'utilisateur est connecté -> On masque l'auth et on montre l'app
+        // Utilisateur connecté -> On bascule sur l'application Darkgramme
         authScreen.classList.add('hidden');
         appScreen.classList.remove('hidden');
-        console.log("Utilisateur connecté :", user.email);
+        console.log("Bienvenue sur Darkgramme ! Connecté :", user.email);
     } else {
-        // L'utilisateur est déconnecté -> On montre l'auth
+        // Utilisateur déconnecté -> On affiche l'écran de connexion
         authScreen.classList.remove('hidden');
         appScreen.classList.add('hidden');
     }
 });
 
-// 2. Fonction d'Inscription
+// --- FONCTION D'INSCRIPTION ---
 document.getElementById('btn-signup').addEventListener('click', async () => {
     const pseudo = document.getElementById('signup-pseudo').value.trim();
     const email = document.getElementById('signup-email').value.trim();
@@ -67,24 +67,27 @@ document.getElementById('btn-signup').addEventListener('click', async () => {
     if(!pseudo || !email || !password) return alert("Veuillez remplir tous les champs.");
 
     try {
-        // Création du compte dans Firebase Auth
+        // 1. Création du compte utilisateur dans Firebase Auth
         const userCredential = await createUserWithEmailAndPassword(auth, email, password);
         const user = userCredential.user;
 
-        // Enregistrement du pseudo dans la base de données Firestore
+        // 2. Création de son profil dans la base de données Firestore
         await setDoc(doc(db, "users", user.uid), {
             pseudo: pseudo,
             email: email,
-            photoProfil: "https://via.placeholder.com/150", // Photo par défaut
-            bio: "Bienvenue sur mon Darkgramme !"
+            photoProfil: "https://via.placeholder.com/150", 
+            bio: "Bienvenue sur mon Darkgramme !",
+            dateCreation: new Date()
         });
+        
+        alert("Compte créé avec succès !");
 
     } catch (error) {
         alert("Erreur d'inscription : " + error.message);
     }
 });
 
-// 3. Fonction de Connexion
+// --- FONCTION DE CONNEXION ---
 document.getElementById('btn-login').addEventListener('click', async () => {
     const email = document.getElementById('login-email').value.trim();
     const password = document.getElementById('login-password').value;
@@ -97,3 +100,5 @@ document.getElementById('btn-login').addEventListener('click', async () => {
         alert("Erreur de connexion : " + error.message);
     }
 });
+
+console.log("Le moteur de Darkgramme est configuré et prêt.");
