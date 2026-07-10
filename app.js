@@ -3,14 +3,14 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/fireba
 import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 import { getFirestore, doc, setDoc, getDoc, collection, addDoc } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
-// --- TES VRAIES CLÉS CONFIGURATION FIREBASE ---
+// --- TES NOUVELLES CLÉS DE CONFIGURATION (DARKGRAMME-PRO) ---
 const firebaseConfig = {
-  apiKey: "AIzaSyCq8JXrqNNYcoWAiNruIEIJ1xXQD3jjkg8",
-  authDomain: "darkgramme.firebaseapp.com",
-  projectId: "darkgramme",
-  storageBucket: "darkgramme.firebasestorage.app",
-  messagingSenderId: "891763336924",
-  appId: "1:891763336924:web:8ddcd7899ef235c5f27619"
+  apiKey: "AIzaSyDqfKtCjW0nXB8ZGkEYx_bHFmfAtMJKxxU",
+  authDomain: "darkgramme-pro.firebaseapp.com",
+  projectId: "darkgramme-pro",
+  storageBucket: "darkgramme-pro.firebasestorage.app",
+  messagingSenderId: "662519634699",
+  appId: "1:662519634699:web:dc68ed771121e81daa200e"
 };
 
 // Initialisation des services
@@ -183,7 +183,6 @@ function executerCommandeLox(message) {
         } else if (texte.includes('ca va') || texte.includes('comment tu vas')) {
             ajouterMessageChat('lox', "Je fonctionne à plein régime ! Toujours dispo pour faire tourner Darkgramme au doigt et à l'œil. Et toi ? 🔥");
         } else {
-            document.getElementById('lox-chat-messages');
             ajouterMessageChat('lox', "Je comprends le message, mais pour déclencher une action magique, essaie d'inclure des mots comme : <strong>profil</strong>, <strong>accueil</strong>, <strong>publier</strong>, <strong>légende</strong> ou <strong>effacer</strong> ! 😉");
         }
     }, 600);
