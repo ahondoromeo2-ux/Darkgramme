@@ -31,7 +31,6 @@ body {
     align-items: center;
     min-height: 100vh;
     padding: 20px;
-    background-color: #000000;
 }
 
 .auth-logo {
@@ -70,15 +69,10 @@ body {
     margin-top: 10px;
 }
 
-.btn-primary:active {
-    background-color: #0074cc;
-}
-
 .auth-switch {
     margin-top: 25px;
     font-size: 0.85rem;
     color: #a8a8a8;
-    text-align: center;
 }
 
 .auth-switch span {
@@ -87,7 +81,7 @@ body {
     cursor: pointer;
 }
 
-/* --- INTERFACE APPLICATION --- */
+/* --- INTERFACE DU COMPOSANT MAIN --- */
 .top-nav {
     display: flex;
     justify-content: space-between;
@@ -110,32 +104,119 @@ body {
 #main-content {
     margin-top: 60px; 
     margin-bottom: 60px;
-    padding: 15px;
+    padding: 10px;
     min-height: calc(100vh - 120px);
     display: flex;
     flex-direction: column;
 }
 
-/* Style des écrans interchangeables */
 .view {
     width: 100%;
     display: flex;
     flex-direction: column;
-    align-items: center;
-    text-align: center;
-    margin-top: 20px;
 }
 
 .view h2 {
     font-size: 1.4rem;
-    margin-bottom: 10px;
+    margin-bottom: 15px;
+    text-align: center;
 }
 
 .placeholder-text {
     color: #a8a8a8;
-    font-size: 0.95rem;
+    text-align: center;
 }
 
+/* --- DESIGN DE LA PAGE PROFIL --- */
+.profile-header {
+    display: flex;
+    align-items: center;
+    padding: 15px 5px;
+    width: 100%;
+}
+
+#profile-avatar {
+    width: 85px;
+    height: 85px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 2px solid #262626;
+}
+
+.profile-stats-container {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    margin-left: 25px;
+}
+
+#profile-pseudo {
+    font-size: 1.3rem;
+    font-weight: 600;
+    text-align: left;
+    margin-bottom: 10px;
+}
+
+.stats-row {
+    display: flex;
+    justify-content: space-between;
+    text-align: center;
+    width: 100%;
+}
+
+.stat-item {
+    font-size: 0.85rem;
+    color: #ffffff;
+    line-height: 1.4;
+}
+
+.stat-item strong {
+    font-size: 1rem;
+}
+
+.profile-bio {
+    padding: 0 5px 15px 5px;
+    font-size: 0.9rem;
+    line-height: 1.5;
+    color: #f5f5f5;
+}
+
+.btn-secondary {
+    width: 100%;
+    padding: 8px;
+    background-color: #1c1c1e;
+    color: #ffffff;
+    border: 1px solid #262626;
+    border-radius: 5px;
+    font-weight: bold;
+    font-size: 0.85rem;
+    cursor: pointer;
+    margin-bottom: 20px;
+}
+
+.profile-divider {
+    border: 0;
+    height: 1px;
+    background: #262626;
+    margin-bottom: 15px;
+}
+
+.profile-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 3px;
+    width: 100%;
+}
+
+.no-posts {
+    grid-column: span 3;
+    text-align: center;
+    color: #a8a8a8;
+    margin-top: 40px;
+    font-size: 0.9rem;
+}
+
+/* --- BOTTOM NAV --- */
 .bottom-nav {
     display: flex;
     justify-content: space-around;
@@ -154,7 +235,6 @@ body {
     border: none;
     color: #ffffff;
     font-size: 1.5rem;
-    cursor: pointer;
 }
 
 .nav-item.active {
