@@ -38,18 +38,40 @@
         </header>
 
         <main id="main-content">
-            <div class="welcome-message">
-                <h2>Bienvenue sur Darkgramme</h2>
-                <p>Connexion réussie ! Chargement de ton flux...</p>
+            
+            <div id="view-home" class="view">
+                <h2>Fil d'actualité</h2>
+                <p class="placeholder-text">Les publications de tes abonnements apparaîtront ici.</p>
             </div>
+            
+            <div id="view-search" class="view hidden">
+                <h2>Recherche</h2>
+                <p class="placeholder-text">Chercher des amis ou des publications.</p>
+            </div>
+
+            <div id="view-post" class="view hidden">
+                <h2>Créer un post</h2>
+                <p class="placeholder-text">Ajouter une nouvelle photo sur Darkgramme.</p>
+            </div>
+
+            <div id="view-notifications" class="view hidden">
+                <h2>Notifications</h2>
+                <p class="placeholder-text">Tes mentions J'aime et commentaires.</p>
+            </div>
+
+            <div id="view-profile" class="view hidden">
+                <h2>Mon Profil</h2>
+                <p class="placeholder-text">Tes photos, ta bio et tes abonnés.</p>
+            </div>
+
         </main>
 
         <nav class="bottom-nav">
-            <button class="nav-item active"><i class="fa-solid fa-house"></i></button>
-            <button class="nav-item"><i class="fa-solid fa-magnifying-glass"></i></button>
-            <button class="nav-item"><i class="fa-regular fa-square-plus"></i></button>
-            <button class="nav-item"><i class="fa-solid fa-clapperboard"></i></button>
-            <button class="nav-item profile-icon"><i class="fa-solid fa-circle-user"></i></button>
+            <button class="nav-item active" data-view="home"><i class="fa-solid fa-house"></i></button>
+            <button class="nav-item" data-view="search"><i class="fa-solid fa-magnifying-glass"></i></button>
+            <button class="nav-item" data-view="post"><i class="fa-regular fa-square-plus"></i></button>
+            <button class="nav-item" data-view="notifications"><i class="fa-solid fa-heart"></i></button>
+            <button class="nav-item profile-icon" data-view="profile"><i class="fa-solid fa-circle-user"></i></button>
         </nav>
     </div>
 
