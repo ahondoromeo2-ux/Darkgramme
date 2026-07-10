@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="fr">
 <head>
@@ -10,28 +9,49 @@
 </head>
 <body>
 
-    <header class="top-nav">
-        <h1 class="logo">Darkgramme</h1>
-        <div class="top-icons">
-            <i class="fa-regular fa-heart"></i>
-            <i class="fa-brands fa-facebook-messenger"></i>
+    <div id="auth-screen" class="auth-container">
+        <h1 class="logo auth-logo">Darkgramme</h1>
+        
+        <div id="login-form">
+            <input type="email" id="login-email" placeholder="Adresse e-mail">
+            <input type="password" id="login-password" placeholder="Mot de passe">
+            <button id="btn-login" class="btn-primary">Se connecter</button>
+            <p class="auth-switch">Pas encore de compte ? <span id="go-to-signup">Inscris-toi</span></p>
         </div>
-    </header>
 
-    <main id="main-content">
-        <div class="welcome-message">
-            <h2>Bienvenue sur Darkgramme</h2>
-            <p>Chargement du flux...</p>
+        <div id="signup-form" class="hidden">
+            <input type="text" id="signup-pseudo" placeholder="Nom d'utilisateur (Pseudo)">
+            <input type="email" id="signup-email" placeholder="Adresse e-mail">
+            <input type="password" id="signup-password" placeholder="Mot de passe">
+            <button id="btn-signup" class="btn-primary">S'inscrire</button>
+            <p class="auth-switch">Tu as déjà un compte ? <span id="go-to-login">Connecte-toi</span></p>
         </div>
-    </main>
+    </div>
 
-    <nav class="bottom-nav">
-        <button class="nav-item active"><i class="fa-solid fa-house"></i></button>
-        <button class="nav-item"><i class="fa-solid fa-magnifying-glass"></i></button>
-        <button class="nav-item"><i class="fa-regular fa-square-plus"></i></button>
-        <button class="nav-item"><i class="fa-solid fa-clapperboard"></i></button>
-        <button class="nav-item profile-icon"><i class="fa-solid fa-circle-user"></i></button>
-    </nav>
+    <div id="app-screen" class="hidden">
+        <header class="top-nav">
+            <h1 class="logo">Darkgramme</h1>
+            <div class="top-icons">
+                <i class="fa-regular fa-heart"></i>
+                <i class="fa-brands fa-facebook-messenger"></i>
+            </div>
+        </header>
+
+        <main id="main-content">
+            <div class="welcome-message">
+                <h2>Bienvenue sur Darkgramme</h2>
+                <p>Connexion réussie ! Chargement de ton flux...</p>
+            </div>
+        </main>
+
+        <nav class="bottom-nav">
+            <button class="nav-item active"><i class="fa-solid fa-house"></i></button>
+            <button class="nav-item"><i class="fa-solid fa-magnifying-glass"></i></button>
+            <button class="nav-item"><i class="fa-regular fa-square-plus"></i></button>
+            <button class="nav-item"><i class="fa-solid fa-clapperboard"></i></button>
+            <button class="nav-item profile-icon"><i class="fa-solid fa-circle-user"></i></button>
+        </nav>
+    </div>
 
     <script type="module" src="app.js"></script>
 </body>
