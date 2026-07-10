@@ -9,9 +9,11 @@
 </head>
 <body>
 
+    <!-- ÉCRAN D'AUTHENTIFICATION -->
     <div id="auth-screen" class="auth-container">
         <h1 class="logo auth-logo">Darkgramme</h1>
         
+        <!-- Formulaire de Connexion -->
         <div id="login-form">
             <input type="email" id="login-email" placeholder="Adresse e-mail">
             <input type="password" id="login-password" placeholder="Mot de passe">
@@ -19,6 +21,7 @@
             <p class="auth-switch">Pas encore de compte ? <span id="go-to-signup">Inscris-toi</span></p>
         </div>
 
+        <!-- Formulaire d'Inscription -->
         <div id="signup-form" class="hidden">
             <input type="text" id="signup-pseudo" placeholder="Nom d'utilisateur (Pseudo)">
             <input type="email" id="signup-email" placeholder="Adresse e-mail">
@@ -28,7 +31,9 @@
         </div>
     </div>
 
+    <!-- ÉCRAN PRINCIPAL DE L'APPLICATION -->
     <div id="app-screen" class="hidden">
+        <!-- L'en-tête -->
         <header class="top-nav">
             <h1 class="logo">Darkgramme</h1>
             <div class="top-icons">
@@ -37,28 +42,38 @@
             </div>
         </header>
 
+        <!-- Zone des écrans interchangeables -->
         <main id="main-content">
             
+            <!-- 1. ÉCRAN ACCUEIL (FEED) -->
             <div id="view-home" class="view">
                 <h2>Fil d'actualité</h2>
                 <p class="placeholder-text">Les publications de tes abonnements apparaîtront ici.</p>
             </div>
             
+            <!-- 2. ÉCRAN RECHERCHE -->
             <div id="view-search" class="view hidden">
                 <h2>Recherche</h2>
                 <p class="placeholder-text">Chercher des amis ou des publications.</p>
             </div>
 
+            <!-- 3. ÉCRAN PUBLIER (MIS À ZONE AVEC LE FORMULAIRE) -->
             <div id="view-post" class="view hidden">
                 <h2>Créer un post</h2>
-                <p class="placeholder-text">Ajouter une nouvelle photo sur Darkgramme.</p>
+                <div class="post-form">
+                    <input type="text" id="post-img-url" placeholder="Lien de la photo (URL)">
+                    <textarea id="post-caption" placeholder="Écris une légende..."></textarea>
+                    <button id="btn-share" class="btn-primary">Partager la publication</button>
+                </div>
             </div>
 
+            <!-- 4. ÉCRAN NOTIFICATIONS -->
             <div id="view-notifications" class="view hidden">
                 <h2>Notifications</h2>
                 <p class="placeholder-text">Tes mentions J'aime et commentaires.</p>
             </div>
 
+            <!-- 5. ÉCRAN PROFIL -->
             <div id="view-profile" class="view hidden">
                 <div class="profile-header">
                     <img id="profile-avatar" src="https://via.placeholder.com/150" alt="Avatar">
@@ -87,6 +102,7 @@
 
         </main>
 
+        <!-- La barre de navigation du bas -->
         <nav class="bottom-nav">
             <button class="nav-item active" data-view="home"><i class="fa-solid fa-house"></i></button>
             <button class="nav-item" data-view="search"><i class="fa-solid fa-magnifying-glass"></i></button>
