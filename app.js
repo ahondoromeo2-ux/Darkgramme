@@ -1,24 +1,24 @@
-// --- IMPORTATIONS FIREBASE ---
+// --- IMPORTATIONS FIREBASE (VERSION WEB CDN) ---
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
 import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 import { getFirestore, doc, setDoc, getDoc, collection, addDoc } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
-// --- CONFIGURATION FIREBASE DE DARKGRAMME ---
+// --- TES VRAIES CLÉS CONFIGURATION FIREBASE ---
 const firebaseConfig = {
-  apiKey: "AIzaSyDqRXprLqWjYXw1HDhcsdFTGItQV1Nbsaw",
-  authDomain: "darkgramme-eaafa.firebaseapp.com",
-  projectId: "darkgramme-eaafa",
-  storageBucket: "darkgramme-eaafa.firebasestorage.app",
-  messagingSenderId: "484185842451",
-  appId: "1:484185842451:web:2b7f9dcbfbc0b642ecf0e6"
+  apiKey: "AIzaSyCq8JXrqNNYcoWAiNruIEIJ1xXQD3jjkg8",
+  authDomain: "darkgramme.firebaseapp.com",
+  projectId: "darkgramme",
+  storageBucket: "darkgramme.firebasestorage.app",
+  messagingSenderId: "891763336924",
+  appId: "1:891763336924:web:8ddcd7899ef235c5f27619"
 };
 
-// Initialisation
+// Initialisation des services
 const app = initializeApp(firebaseConfig);
 export const auth = getAuth(app);
 export const db = getFirestore(app);
 
-// Variables globales pour stocker les infos de l'utilisateur connecté
+// Variables globales pour l'utilisateur connecté
 let pseudoConnecte = "Utilisateur";
 let avatarConnecte = "https://via.placeholder.com/150";
 
@@ -41,12 +41,9 @@ const navItems = document.querySelectorAll('.nav-item');
 const views = document.querySelectorAll('.view');
 
 function changerVue(targetView) {
-    // Masquer toutes les vues
     views.forEach(view => view.classList.add('hidden'));
-    // Afficher la vue ciblée
     document.getElementById(`view-${targetView}`).classList.remove('hidden');
     
-    // Mettre à jour les icônes de la barre du bas
     navItems.forEach(nav => {
         nav.classList.remove('active');
         if(nav.getAttribute('data-view') === targetView) {
@@ -73,7 +70,6 @@ async function chargerProfilUtilisateur(uid) {
             pseudoConnecte = data.pseudo;
             avatarConnecte = data.photoProfil || "https://via.placeholder.com/150";
 
-            // Injection des données dans la page Profil HTML
             document.getElementById('profile-pseudo').innerText = pseudoConnecte;
             document.getElementById('profile-bio-text').innerText = data.bio;
             document.getElementById('profile-avatar').src = avatarConnecte;
@@ -132,7 +128,6 @@ const loxInput = document.getElementById('lox-input');
 const btnLoxSend = document.getElementById('btn-lox-send');
 const loxChatMessages = document.getElementById('lox-chat-messages');
 
-// Afficher un message dans le chat
 function ajouterMessageChat(auteur, texte) {
     const messageDiv = document.createElement('div');
     messageDiv.classList.add('message');
@@ -146,79 +141,66 @@ function ajouterMessageChat(auteur, texte) {
     }
     
     loxChatMessages.appendChild(messageDiv);
-    // Scroll automatique vers le bas
     loxChatMessages.scrollTop = loxChatMessages.scrollHeight;
 }
 
-// Cerveau de Lox : Analyse des mots-clés et exécution des fonctions
 function executerCommandeLox(message) {
     const texte = message.toLowerCase();
     
-    // Raccourcis pour faire défiler le chat
     setTimeout(() => {
-        // Fonction 1 : Ouvrir le Profil
         if (texte.includes('profil') || texte.includes('mon compte')) {
             changerVue('profile');
             ajouterMessageChat('lox', "Action exécutée ! Je viens de t'ouvrir ton profil. 👤");
         } 
-        // Fonction 2 : Ouvrir l'Accueil / Flux
         else if (texte.includes('accueil') || texte.includes('fil') || texte.includes('flux')) {
             changerVue('home');
             ajouterMessageChat('lox', "Tout de suite ! Retour sur le fil d'actualité. 🏠");
         } 
-        // Fonction 3 : Ouvrir l'écran de Recherche
         else if (texte.includes('recherche') || texte.includes('chercher')) {
             changerVue('search');
             ajouterMessageChat('lox', "C'est fait, l'écran de recherche est ouvert. 🔍");
         } 
-        // Fonction 4 : Aller sur l'écran de Publication
         else if (texte.includes('post') || texte.includes('publier') || texte.includes('créer')) {
             changerVue('post');
             ajouterMessageChat('lox', "Compris ! J'ai ouvert la page de création. Prêt à publier ton image. 📸");
         } 
-        // Fonction 5 : Nettoyer l'historique du chat
         else if (texte.includes('efface') || texte.includes('nettoie') || texte.includes('clear')) {
             loxChatMessages.innerHTML = "";
             ajouterMessageChat('lox', "Écran nettoyé ! Table rase, qu'est-ce qu'on fait maintenant ? 🧹");
         } 
-        // Fonction 6 : Aide à la création de légendes (Idées de posts)
         else if (texte.includes('légende') || texte.includes('idée') || texte.includes('inspiration')) {
             const idees = [
                 "« Capturer l'instant présent avant qu'il ne devienne un souvenir. ✨ »",
                 "« En mode Darkgramme. La simplicité fait toute la différence. 🖤 »",
-                "« focus sur l'objectif, le reste n'est que du bruit. 🚀 »",
+                "« Focus sur l'objectif, le reste n'est que du bruit. 🚀 »",
                 "« Les meilleures histoires se trouvent entre les lignes. 📖 »"
             ];
             const choix = idees[Math.floor(Math.random() * idees.length)];
             ajouterMessageChat('lox', `Voici une idée de légende stylée que tu peux copier-coller : <br><br><strong>${choix}</strong>`);
         }
-        // Réponses classiques de discussion
         else if (texte.includes('salut') || texte.includes('bonjour') || texte.includes('hey')) {
             ajouterMessageChat('lox', `Salut ! Content de te parler. Je suis prêt à exécuter tes ordres ! Donne-moi un mot-clé comme 'profil', 'publier' ou 'légende'. 😊`);
         } else if (texte.includes('ca va') || texte.includes('comment tu vas')) {
             ajouterMessageChat('lox', "Je fonctionne à plein régime ! Toujours dispo pour faire tourner Darkgramme au doigt et à l'œil. Et toi ? 🔥");
         } else {
+            document.getElementById('lox-chat-messages');
             ajouterMessageChat('lox', "Je comprends le message, mais pour déclencher une action magique, essaie d'inclure des mots comme : <strong>profil</strong>, <strong>accueil</strong>, <strong>publier</strong>, <strong>légende</strong> ou <strong>effacer</strong> ! 😉");
         }
-    }, 600); // Petit délai pour simuler la réflexion de l'IA
+    }, 600);
 }
 
-// Événement au clic sur le bouton envoyer
 btnLoxSend.addEventListener('click', () => {
     const msg = loxInput.value.trim();
     if (!msg) return;
-    
     ajouterMessageChat('user', msg);
     loxInput.value = "";
     executerCommandeLox(msg);
 });
 
-// Événement avec la touche Entrée du clavier
 loxInput.addEventListener('keypress', (e) => {
     if (e.key === 'Enter') {
         const msg = loxInput.value.trim();
         if (!msg) return;
-        
         ajouterMessageChat('user', msg);
         loxInput.value = "";
         executerCommandeLox(msg);
@@ -232,6 +214,7 @@ document.getElementById('btn-signup').addEventListener('click', async () => {
     const password = document.getElementById('signup-password').value;
 
     if(!pseudo || !email || !password) return alert("Veuillez remplir tous les champs.");
+    if(password.length < 6) return alert("Le mot de passe doit contenir au moins 6 caractères.");
 
     try {
         const userCredential = await createUserWithEmailAndPassword(auth, email, password);
@@ -245,7 +228,7 @@ document.getElementById('btn-signup').addEventListener('click', async () => {
             dateCreation: new Date()
         });
         
-        alert("Compte créé avec succès !");
+        alert("Compte créé avec succès ! 🎯");
     } catch (error) {
         alert("Erreur d'inscription : " + error.message);
     }
