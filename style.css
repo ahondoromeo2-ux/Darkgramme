@@ -60,7 +60,7 @@ body {
     width: 100%;
     max-width: 350px;
     padding: 12px;
-    background-color: #0095f6; /* Bleu Instagram */
+    background-color: #0095f6;
     color: #ffffff;
     border: none;
     border-radius: 5px;
@@ -87,7 +87,7 @@ body {
     cursor: pointer;
 }
 
-/* --- INTERFACE APPLICATION (Une fois connecté) --- */
+/* --- INTERFACE APPLICATION --- */
 .top-nav {
     display: flex;
     justify-content: space-between;
@@ -113,18 +113,27 @@ body {
     padding: 15px;
     min-height: calc(100vh - 120px);
     display: flex;
-    justify-content: center;
-    align-items: center;
-    text-align: center;
+    flex-direction: column;
 }
 
-.welcome-message h2 {
-    font-size: 1.2rem;
+/* Style des écrans interchangeables */
+.view {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    margin-top: 20px;
+}
+
+.view h2 {
+    font-size: 1.4rem;
     margin-bottom: 10px;
 }
 
-.welcome-message p {
+.placeholder-text {
     color: #a8a8a8;
+    font-size: 0.95rem;
 }
 
 .bottom-nav {
