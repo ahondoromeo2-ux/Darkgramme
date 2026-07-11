@@ -1,7 +1,7 @@
 // --- IMPORTATIONS FIREBASE (VERSION WEB CDN) ---
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
 import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
-import { getFirestore, doc, setDoc, getDoc, collection, addDoc, query, orderBy, onSnapshot, updateDoc, arrayUnion, increment } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+import { getFirestore, doc, setDoc, getDoc, collection, addDoc, query, orderBy, onSnapshot, updateDoc, arrayUnion, increment, getDocs } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
 // --- CONFIGURATION DE TON PROJET (DARKGRAMME-PRO) ---
 const firebaseConfig = {
@@ -22,6 +22,14 @@ export const db = getFirestore(app);
 let pseudoConnecte = "Utilisateur";
 let avatarConnecte = "https://via.placeholder.com/150";
 let tousLesPosts = []; 
+let currentChatId = "global"; 
+let messageUnsubscribe = null; 
+
+// Variables pour l'enregistreur vocal
+let mediaRecorder = null;
+let audioChunks = [];
+let isRecording = false;
+let audioStream = null;
 
 // --- COMPRESSION & CONVERSION DE L'IMAGE EN TEXTE (BASE64) ---
 function compresserEtConvertirEnBase64(file) {
@@ -67,6 +75,13 @@ function changerVue(targetView) {
             nav.classList.add('active');
         }
     });
+
+    if (targetView !== 'messages') {
+        document.getElementById('chat-room-window').classList.add('hidden');
+        document.getElementById('chat-channels-list').classList.remove('hidden');
+        if (messageUnsubscribe) messageUnsubscribe();
+        arreterEnregistrementSilencieux();
+    }
 }
 
 navItems.forEach(item => {
@@ -74,6 +89,18 @@ navItems.forEach(item => {
         changerVue(this.getAttribute('data-view'));
     });
 });
+
+function arreterEnregistrementSilencieux() {
+    if (isRecording && mediaRecorder) {
+        mediaRecorder.stop();
+        isRecording = false;
+        const btnRecord = document.getElementById('btn-record-audio');
+        if(btnRecord) {
+            btnRecord.innerText = "🎙️";
+            btnRecord.style.background = "#262626";
+        }
+    }
+}
 
 // --- CHARGEMENT DU PROFIL ---
 async function chargerProfilUtilisateur(uid) {
@@ -93,7 +120,7 @@ async function chargerProfilUtilisateur(uid) {
     }
 }
 
-// --- EN DIRECT : FIL D'ACTUALITÉ (AVEC LIKES ET COMMENTAIRES) ---
+// --- FIL D'ACTUALITÉ ---
 function ecouterLeFilActualite() {
     const q = query(collection(db, "posts"), orderBy("date", "desc"));
     onSnapshot(q, (snapshot) => {
@@ -107,7 +134,6 @@ function ecouterLeFilActualite() {
             const postId = documentSnap.id;
             tousLesPosts.push({ ...post, id: postId }); 
             
-            // Génération de la liste des commentaires existants
             let listCommentsHTML = "";
             if (post.comments && post.comments.length > 0) {
                 post.comments.forEach(c => {
@@ -124,7 +150,6 @@ function ecouterLeFilActualite() {
                 </div>
                 <img src="${post.imageUrl}" class="post-image">
                 
-                <!-- Zone d'interactions -->
                 <div style="padding: 10px 12px 5px 12px; display:flex; gap:15px; align-items:center;">
                     <button class="btn-like" data-id="${postId}" style="width:auto; background:none; color:#ff4757; font-size:18px; padding:0; text-align:left;">❤️ ${post.likes || 0}</button>
                 </div>
@@ -133,7 +158,6 @@ function ecouterLeFilActualite() {
                     <strong>${post.pseudo}</strong> ${post.caption}
                 </div>
 
-                <!-- Section des Commentaires -->
                 <div style="padding: 10px 12px; border-top: 1px solid #111; background:#050505;">
                     <div style="max-height:100px; overflow-y:auto; margin-bottom:8px; color:#aaa;">
                         ${listCommentsHTML || '<p style="font-size:12px; color:#555;">Aucun commentaire...</p>'}
@@ -149,42 +173,33 @@ function ecouterLeFilActualite() {
     });
 }
 
-// --- ÉCOUTEUR DES CLICS SUR LE FIL (GESTION DES BOUTONS LIKE & COMMENTAIRES) ---
 const feedContainer = document.getElementById('feed');
 if(feedContainer) {
     feedContainer.addEventListener('click', async (e) => {
-        // Clic sur le bouton Like
         if (e.target.classList.contains('btn-like')) {
             const idDoc = e.target.getAttribute('data-id');
-            const postRef = doc(db, "posts", idDoc);
-            try {
-                await updateDoc(postRef, { likes: increment(1) });
-            } catch (err) { console.error(err); }
+            await updateDoc(doc(db, "posts", idDoc), { likes: increment(1) });
         }
 
-        // Clic sur le bouton Publier Commentaire
         if (e.target.classList.contains('btn-comment')) {
             const idDoc = e.target.getAttribute('data-id');
             const inputField = document.getElementById(`input-comm-${idDoc}`);
             const texteComm = inputField.value.trim();
             if (!texteComm) return;
 
-            const postRef = doc(db, "posts", idDoc);
-            try {
-                await updateDoc(postRef, {
-                    comments: arrayUnion({
-                        pseudo: pseudoConnecte,
-                        texte: texteComm,
-                        date: new Date().toISOString()
-                    })
-                });
-                inputField.value = "";
-            } catch (err) { console.error(err); }
+            await updateDoc(doc(db, "posts", idDoc), {
+                comments: arrayUnion({
+                    pseudo: pseudoConnecte,
+                    texte: texteComm,
+                    date: new Date().toISOString()
+                })
+            });
+            inputField.value = "";
         }
     });
 }
 
-// --- EN DIRECT : BARRE DE RECHERCHE ---
+// --- MOTEUR DE RECHERCHE ---
 const searchBar = document.getElementById('search-bar');
 if(searchBar) {
     searchBar.addEventListener('input', (e) => {
@@ -213,10 +228,53 @@ if(searchBar) {
     });
 }
 
-// --- EN DIRECT : MESSAGERIE DU QG ---
-function ecouterLaMessagerie() {
-    const q = query(collection(db, "messages"), orderBy("date", "asc"));
-    onSnapshot(q, (snapshot) => {
+// --- MESSAGERIE (AVEC RECONNAISSANCE DES MESSAGES VOCAUX) ---
+async function chargerListeUtilisateursDMs(monUid) {
+    const container = document.getElementById('dm-users-container');
+    if(!container) return;
+    container.innerHTML = "";
+
+    try {
+        const querySnapshot = await getDocs(collection(db, "users"));
+        querySnapshot.forEach((docSnap) => {
+            const user = docSnap.data();
+            const userId = docSnap.id;
+
+            if (userId !== monUid) {
+                const userEl = document.createElement('div');
+                userEl.classList.add('list-item');
+                userEl.innerHTML = `
+                    <img src="${user.photoProfil || 'https://via.placeholder.com/150'}" class="user-item-avatar">
+                    <div>
+                        <strong>${user.pseudo}</strong><br>
+                        <small style="color:#666;">Cliquer pour envoyer un message secret</small>
+                    </div>
+                `;
+                userEl.addEventListener('click', () => {
+                    const dmChatId = monUid < userId ? `${monUid}_${userId}` : `${userId}_${monUid}`;
+                    ouvrirSalonDeChat(dmChatId, `Discussion privée avec ${user.pseudo}`);
+                });
+                container.appendChild(userEl);
+            }
+        });
+    } catch (error) {
+        console.error(error);
+    }
+}
+
+function ouvrirSalonDeChat(chatId, titre) {
+    currentChatId = chatId;
+    document.getElementById('chat-room-title').innerText = titre;
+    document.getElementById('chat-channels-list').classList.add('hidden');
+    document.getElementById('chat-room-window').classList.remove('hidden');
+    ecouterLaMessagerie(chatId);
+}
+
+function ecouterLaMessagerie(chatId) {
+    if (messageUnsubscribe) messageUnsubscribe();
+
+    const q = query(collection(db, "chats", chatId, "messages"), orderBy("date", "asc"));
+    messageUnsubscribe = onSnapshot(q, (snapshot) => {
         const msgBox = document.getElementById('msg-box');
         if(!msgBox) return;
         msgBox.innerHTML = "";
@@ -227,13 +285,37 @@ function ecouterLaMessagerie() {
             const estMoi = msg.pseudo === pseudoConnecte;
             
             msgEl.classList.add('msg-bubble', estMoi ? 'msg-me' : 'msg-them');
+            
+            // Si le message est un vocal, on affiche le player audio HTML5 natif
+            let renduContenu = msg.texte;
+            if (msg.type === "audio") {
+                renduContenu = `<audio controls src="${msg.audioData}"></audio>`;
+            }
+            
             msgEl.innerHTML = `
                 <span class="msg-sender-name">${msg.pseudo}</span>
-                ${msg.texte}
+                ${renduContenu}
             `;
             msgBox.appendChild(msgEl);
         });
         msgBox.scrollTop = msgBox.scrollHeight;
+    });
+}
+
+const btnBack = document.getElementById('btn-back-to-channels');
+if(btnBack) {
+    btnBack.addEventListener('click', () => {
+        if (messageUnsubscribe) messageUnsubscribe();
+        arreterEnregistrementSilencieux();
+        document.getElementById('chat-room-window').classList.add('hidden');
+        document.getElementById('chat-channels-list').classList.remove('hidden');
+    });
+}
+
+const btnGlobal = document.getElementById('channel-global');
+if(btnGlobal) {
+    btnGlobal.addEventListener('click', () => {
+        ouvrirSalonDeChat("global", "Le QG de Darkgramme 📢");
     });
 }
 
@@ -245,14 +327,72 @@ if(btnSendMsg) {
         if(!texte) return;
 
         try {
-            await addDoc(collection(db, "messages"), {
+            await addDoc(collection(db, "chats", currentChatId, "messages"), {
                 pseudo: pseudoConnecte,
                 texte: texte,
+                type: "text",
                 date: new Date()
             });
             input.value = "";
-        } catch (error) {
-            console.error("Erreur d'envoi :", error);
+        } catch (error) { console.error(error); }
+    });
+}
+
+// --- ENREGISTREUR DES MESSAGES VOCAUX 🎙️ ---
+const btnRecordAudio = document.getElementById('btn-record-audio');
+if(btnRecordAudio) {
+    btnRecordAudio.addEventListener('click', async () => {
+        if (!isRecording) {
+            // Lancement de l'enregistrement
+            if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+                return alert("Ton téléphone bloque ou ne supporte pas l'accès micro sur ce navigateur.");
+            }
+            
+            try {
+                audioStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                mediaRecorder = new MediaRecorder(audioStream);
+                audioChunks = [];
+
+                mediaRecorder.ondataavailable = (event) => {
+                    audioChunks.push(event.data);
+                };
+
+                mediaRecorder.onstop = () => {
+                    const audioBlob = new Blob(audioChunks, { type: 'audio/mp3' });
+                    const reader = new FileReader();
+                    reader.readAsDataURL(audioBlob);
+                    reader.onloadend = async () => {
+                        const base64Audio = reader.result;
+                        // Envoi immédiat du vocal sur Firebase
+                        try {
+                            await addDoc(collection(db, "chats", currentChatId, "messages"), {
+                                pseudo: pseudoConnecte,
+                                type: "audio",
+                                audioData: base64Audio,
+                                date: new Date()
+                            });
+                        } catch (err) { console.error(err); }
+                    };
+                    
+                    // On coupe proprement le capteur du micro
+                    if (audioStream) {
+                        audioStream.getTracks().forEach(track => track.stop());
+                    }
+                };
+
+                mediaRecorder.start();
+                isRecording = true;
+                btnRecordAudio.innerText = "🛑";
+                btnRecordAudio.style.background = "#ed4956"; // Rouge enregistrement
+            } catch (err) {
+                alert("Erreur d'accès au micro : " + err.message);
+            }
+        } else {
+            // Arrêt et envoi automatique
+            mediaRecorder.stop();
+            isRecording = false;
+            btnRecordAudio.innerText = "🎙️";
+            btnRecordAudio.style.background = "#262626";
         }
     });
 }
@@ -266,10 +406,10 @@ if(btnShare) {
         const user = auth.currentUser;
 
         if (!user) return alert("Connecte-toi d'abord.");
-        if (!fileInput.files || fileInput.files.length === 0) return alert("Choisis une photo dans ton téléphone !");
+        if (!fileInput.files || fileInput.files.length === 0) return alert("Choisis une photo !");
 
         try {
-            alert("Compression de la photo en cours... Patientez ⏳");
+            alert("Compression en cours... Patientez ⏳");
             const photoBase64 = await compresserEtConvertirEnBase64(fileInput.files[0]);
 
             await addDoc(collection(db, "posts"), {
@@ -283,34 +423,35 @@ if(btnShare) {
                 date: new Date()
             });
 
-            alert("Posté avec succès sur Darkgramme ! 🚀");
+            alert("Posté avec succès ! 🚀");
             fileInput.value = "";
             document.getElementById('post-caption').value = "";
             changerVue('home');
-        } catch (error) {
-            alert("Erreur lors du partage : " + error.message);
-        }
+        } catch (error) { alert(error.message); }
     });
 }
 
 // --- ÉCOUTEUR D'ÉTAT DE CONNEXION ---
-const authScreen = document.getElementById('auth-screen');
-const appScreen = document.getElementById('app-screen');
-
 onAuthStateChanged(auth, (user) => {
+    const authScreen = document.getElementById('auth-screen');
+    const appScreen = document.getElementById('app-screen');
+    
     if (user) {
         if(authScreen) authScreen.classList.add('hidden');
         if(appScreen) appScreen.classList.remove('hidden');
+        
         chargerProfilUtilisateur(user.uid);
         ecouterLeFilActualite();
-        ecouterLaMessagerie();
+        chargerListeUtilisateursDMs(user.uid);
     } else {
         if(authScreen) authScreen.classList.remove('hidden');
         if(appScreen) appScreen.classList.add('hidden');
+        if(messageUnsubscribe) messageUnsubscribe();
+        arreterEnregistrementSilencieux();
     }
 });
 
-// --- GESTION DE L'AUTHENTIFICATION ---
+// --- ENREGISTREMENTS DES BOUTONS DE COMPTE ---
 const loginForm = document.getElementById('login-form');
 const signupForm = document.getElementById('signup-form');
 
