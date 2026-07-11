@@ -1,257 +1,143 @@
-// --- IMPORTATIONS FIREBASE (VERSION WEB CDN) ---
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
-import { getFirestore, doc, setDoc, getDoc, collection, addDoc } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
-
-// --- TES NOUVELLES CLÉS DE CONFIGURATION (DARKGRAMME-PRO) ---
-const firebaseConfig = {
-  apiKey: "AIzaSyDqfKtCjW0nXB8ZGkEYx_bHFmfAtMJKxxU",
-  authDomain: "darkgramme-pro.firebaseapp.com",
-  projectId: "darkgramme-pro",
-  storageBucket: "darkgramme-pro.firebasestorage.app",
-  messagingSenderId: "662519634699",
-  appId: "1:662519634699:web:dc68ed771121e81daa200e"
-};
-
-// Initialisation des services
-const app = initializeApp(firebaseConfig);
-export const auth = getAuth(app);
-export const db = getFirestore(app);
-
-// Variables globales pour l'utilisateur connecté
-let pseudoConnecte = "Utilisateur";
-let avatarConnecte = "https://via.placeholder.com/150";
-
-// --- NAVIGATION ENTRE INSCRIPTION ET CONNEXION ---
-const loginForm = document.getElementById('login-form');
-const signupForm = document.getElementById('signup-form');
-
-document.getElementById('go-to-signup').addEventListener('click', () => {
-    loginForm.classList.add('hidden');
-    signupForm.classList.remove('hidden');
-});
-
-document.getElementById('go-to-login').addEventListener('click', () => {
-    signupForm.classList.add('hidden');
-    loginForm.classList.remove('hidden');
-});
-
-// --- LOGIQUE DE NAVIGATION DE L'APPLICATION ---
-const navItems = document.querySelectorAll('.nav-item');
-const views = document.querySelectorAll('.view');
-
-function changerVue(targetView) {
-    views.forEach(view => view.classList.add('hidden'));
-    document.getElementById(`view-${targetView}`).classList.remove('hidden');
-    
-    navItems.forEach(nav => {
-        nav.classList.remove('active');
-        if(nav.getAttribute('data-view') === targetView) {
-            nav.classList.add('active');
-        }
-    });
-}
-
-navItems.forEach(item => {
-    item.addEventListener('click', function() {
-        const targetView = this.getAttribute('data-view');
-        changerVue(targetView);
-    });
-});
-
-// --- RÉCUPÉRATION DES DONNÉES DU PROFIL (FIRESTORE) ---
-async function chargerProfilUtilisateur(uid) {
-    try {
-        const docRef = doc(db, "users", uid);
-        const docSnap = await getDoc(docRef);
-
-        if (docSnap.exists()) {
-            const data = docSnap.data();
-            pseudoConnecte = data.pseudo;
-            avatarConnecte = data.photoProfil || "https://via.placeholder.com/150";
-
-            document.getElementById('profile-pseudo').innerText = pseudoConnecte;
-            document.getElementById('profile-bio-text').innerText = data.bio;
-            document.getElementById('profile-avatar').src = avatarConnecte;
-        }
-    } catch (error) {
-        console.error("Erreur lors du chargement du profil :", error);
-    }
-}
-
-// --- SURVEILLANCE DE L'ÉTAT DE L'UTILISATEUR ---
-const authScreen = document.getElementById('auth-screen');
-const appScreen = document.getElementById('app-screen');
-
-onAuthStateChanged(auth, (user) => {
-    if (user) {
-        authScreen.classList.add('hidden');
-        appScreen.classList.remove('hidden');
-        chargerProfilUtilisateur(user.uid);
-    } else {
-        authScreen.classList.remove('hidden');
-        appScreen.classList.add('hidden');
-    }
-});
-
-// --- ENREGISTRER UN NOUVEAU POST ---
-document.getElementById('btn-share').addEventListener('click', async () => {
-    const imgUrl = document.getElementById('post-img-url').value.trim();
-    const caption = document.getElementById('post-caption').value.trim();
-    const user = auth.currentUser;
-
-    if (!user) return alert("Tu dois être connecté pour publier.");
-    if (!imgUrl) return alert("Ajoute le lien d'une image pour publier !");
-
-    try {
-        await addDoc(collection(db, "posts"), {
-            uid: user.uid,
-            pseudo: pseudoConnecte,
-            avatar: avatarConnecte,
-            imageUrl: imgUrl,
-            caption: caption,
-            date: new Date(),
-            likes: 0
-        });
-
-        alert("Publication partagée avec succès ! 🚀");
-        document.getElementById('post-img-url').value = "";
-        document.getElementById('post-caption').value = "";
-        changerVue('home');
-    } catch (error) {
-        alert("Erreur lors du partage : " + error.message);
-    }
-});
-
-// --- L'INTELLIGENCE ARTIFICIELLE LOX (FONCTIONS & CHAT) ---
-const loxInput = document.getElementById('lox-input');
-const btnLoxSend = document.getElementById('btn-lox-send');
-const loxChatMessages = document.getElementById('lox-chat-messages');
-
-function ajouterMessageChat(auteur, texte) {
-    const messageDiv = document.createElement('div');
-    messageDiv.classList.add('message');
-    
-    if (auteur === 'user') {
-        messageDiv.classList.add('user-msg');
-        messageDiv.innerHTML = `<strong>Moi :</strong> ${texte}`;
-    } else {
-        messageDiv.classList.add('lox-msg');
-        messageDiv.innerHTML = `<strong>Lox :</strong> ${texte}`;
-    }
-    
-    loxChatMessages.appendChild(messageDiv);
-    loxChatMessages.scrollTop = loxChatMessages.scrollHeight;
-}
-
-function executerCommandeLox(message) {
-    const texte = message.toLowerCase();
-    
-    setTimeout(() => {
-        if (texte.includes('profil') || texte.includes('mon compte')) {
-            changerVue('profile');
-            ajouterMessageChat('lox', "Action exécutée ! Je viens de t'ouvrir ton profil. 👤");
-        } 
-        else if (texte.includes('accueil') || texte.includes('fil') || texte.includes('flux')) {
-            changerVue('home');
-            ajouterMessageChat('lox', "Tout de suite ! Retour sur le fil d'actualité. 🏠");
-        } 
-        else if (texte.includes('recherche') || texte.includes('chercher')) {
-            changerVue('search');
-            ajouterMessageChat('lox', "C'est fait, l'écran de recherche est ouvert. 🔍");
-        } 
-        else if (texte.includes('post') || texte.includes('publier') || texte.includes('créer')) {
-            changerVue('post');
-            ajouterMessageChat('lox', "Compris ! J'ai ouvert la page de création. Prêt à publier ton image. 📸");
-        } 
-        else if (texte.includes('efface') || texte.includes('nettoie') || texte.includes('clear')) {
-            loxChatMessages.innerHTML = "";
-            ajouterMessageChat('lox', "Écran nettoyé ! Table rase, qu'est-ce qu'on fait maintenant ? 🧹");
-        } 
-        else if (texte.includes('légende') || texte.includes('idée') || texte.includes('inspiration')) {
-            const idees = [
-                "« Capturer l'instant présent avant qu'il ne devienne un souvenir. ✨ »",
-                "« En mode Darkgramme. La simplicité fait toute la différence. 🖤 »",
-                "« Focus sur l'objectif, le reste n'est que du bruit. 🚀 »",
-                "« Les meilleures histoires se trouvent entre les lignes. 📖 »"
-            ];
-            const choix = idees[Math.floor(Math.random() * idees.length)];
-            ajouterMessageChat('lox', `Voici une idée de légende stylée que tu peux copier-coller : <br><br><strong>${choix}</strong>`);
-        }
-        else if (texte.includes('salut') || texte.includes('bonjour') || texte.includes('hey')) {
-            ajouterMessageChat('lox', `Salut ! Content de te parler. Je suis prêt à exécuter tes ordres ! Donne-moi un mot-clé comme 'profil', 'publier' ou 'légende'. 😊`);
-        } else if (texte.includes('ca va') || texte.includes('comment tu vas')) {
-            ajouterMessageChat('lox', "Je fonctionne à plein régime ! Toujours dispo pour faire tourner Darkgramme au doigt et à l'œil. Et toi ? 🔥");
-        } else {
-            ajouterMessageChat('lox', "Je comprends le message, mais pour déclencher une action magique, essaie d'inclure des mots comme : <strong>profil</strong>, <strong>accueil</strong>, <strong>publier</strong>, <strong>légende</strong> ou <strong>effacer</strong> ! 😉");
-        }
-    }, 600);
-}
-
-btnLoxSend.addEventListener('click', () => {
-    const msg = loxInput.value.trim();
-    if (!msg) return;
-    ajouterMessageChat('user', msg);
-    loxInput.value = "";
-    executerCommandeLox(msg);
-});
-
-loxInput.addEventListener('keypress', (e) => {
-    if (e.key === 'Enter') {
-        const msg = loxInput.value.trim();
-        if (!msg) return;
-        ajouterMessageChat('user', msg);
-        loxInput.value = "";
-        executerCommandeLox(msg);
-    }
-});
-
-// --- FONCTION D'INSCRIPTION ---
-document.getElementById('btn-signup').addEventListener('click', async () => {
-    const pseudo = document.getElementById('signup-pseudo').value.trim();
-    const email = document.getElementById('signup-email').value.trim();
-    const password = document.getElementById('signup-password').value;
-
-    if(!pseudo || !email || !password) return alert("Veuillez remplir tous les champs.");
-    if(password.length < 6) return alert("Le mot de passe doit contenir au moins 6 caractères.");
-
-    try {
-        const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-        const user = userCredential.user;
-
-        await setDoc(doc(db, "users", user.uid), {
-            pseudo: pseudo,
-            email: email,
-            photoProfil: "https://via.placeholder.com/150", 
-            bio: "Bienvenue sur mon Darkgramme !",
-            dateCreation: new Date()
-        });
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Darkgramme</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { background-color: #000; color: #fff; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
         
-        alert("Compte créé avec succès ! 🎯");
-    } catch (error) {
-        alert("Erreur d'inscription : " + error.message);
-    }
-});
+        /* Écrans de Connexion / Inscription */
+        .auth-container { padding: 30px 20px; max-width: 400px; margin: 50px auto; text-align: center; }
+        .auth-container h1 { font-size: 2.5rem; margin-bottom: 30px; letter-spacing: -1px; }
+        .auth-card { background: #111; padding: 25px; border-radius: 12px; border: 1px solid #222; }
+        input { width: 100%; padding: 12px; margin-bottom: 15px; background: #222; border: 1px solid #333; border-radius: 6px; color: #fff; font-size: 14px; }
+        input:focus { border-color: #555; outline: none; }
+        button { width: 100%; padding: 12px; background: #fff; color: #000; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; font-size: 14px; }
+        .auth-switch { margin-top: 20px; color: #aaa; font-size: 13px; }
+        .auth-switch span { color: #3498db; cursor: pointer; font-weight: bold; }
+        
+        /* Application Principale */
+        header { background: #000; padding: 15px; text-align: center; border-bottom: 1px solid #222; position: fixed; top: 0; width: 100%; z-index: 10; }
+        header h2 { font-size: 1.5rem; letter-spacing: -0.5px; }
+        .container { padding: 70px 15px 80px 15px; max-width: 500px; margin: 0 auto; }
+        .view { width: 100%; }
+        .hidden { display: none !important; }
+        
+        /* Fil d'actualité (Home) */
+        .post-card { background: #000; border: 1px solid #222; border-radius: 8px; margin-bottom: 20px; padding-bottom: 10px; overflow: hidden; }
+        .post-header { display: flex; align-items: center; padding: 10px; gap: 10px; }
+        .post-avatar { width: 32px; height: 32px; border-radius: 50%; object-fit: cover; background: #333; }
+        .post-image { width: 100%; display: block; background: #111; }
+        .post-caption { padding: 10px 12px; font-size: 14px; line-height: 1.4; }
+        
+        /* Messagerie & Recherche */
+        .chat-box { height: 60vh; overflow-y: auto; border: 1px solid #222; padding: 15px; margin-bottom: 15px; background: #0a0a0a; border-radius: 8px; display: flex; flex-direction: column; gap: 10px; }
+        .msg-bubble { padding: 10px 14px; border-radius: 18px; max-width: 80%; font-size: 14px; line-height: 1.4; word-break: break-word; }
+        .msg-me { background: #0095f6; color: #fff; align-self: flex-end; border-bottom-right-radius: 2px; }
+        .msg-them { background: #262626; color: #fff; align-self: flex-start; border-bottom-left-radius: 2px; }
+        .msg-sender-name { font-size: 11px; color: #aaa; margin-bottom: 2px; display: block; }
+        .search-res-item { display: flex; align-items: center; gap: 15px; padding: 12px; border-bottom: 1px solid #111; }
+        
+        /* Profil */
+        .profile-info { text-align: center; padding: 20px 0; border-bottom: 1px solid #222; margin-bottom: 20px; }
+        #profile-avatar { width: 80px; height: 80px; border-radius: 50%; object-fit: cover; margin-bottom: 10px; background: #333; }
+        #profile-pseudo { font-size: 1.2rem; font-weight: bold; margin-bottom: 5px; }
+        #profile-bio-text { color: #aaa; font-size: 14px; margin-bottom: 15px; }
+        .btn-danger { background: #ed4956; color: #fff; }
+        
+        /* Barre de Navigation du Bas */
+        .nav-bar { background: #000; border-top: 1px solid #222; position: fixed; bottom: 0; width: 100%; display: table; table-layout: fixed; height: 55px; z-index: 10; }
+        .nav-item { display: table-cell; text-align: center; vertical-align: middle; font-size: 22px; cursor: pointer; color: #8e8e8e; }
+        .nav-item.active { color: #fff; }
+    </style>
+</head>
+<body>
 
-// --- FONCTION DE CONNEXION ---
-document.getElementById('btn-login').addEventListener('click', async () => {
-    const email = document.getElementById('login-email').value.trim();
-    const password = document.getElementById('login-password').value;
+    <!-- ================= ÉCRAN D'AUTHENTIFICATION ================= -->
+    <div id="auth-screen" class="auth-container">
+        <h1>Darkgramme</h1>
+        
+        <!-- Formulaire de Connexion -->
+        <div id="login-form" class="auth-card">
+            <input type="email" id="login-email" placeholder="Adresse e-mail">
+            <input type="password" id="login-password" placeholder="Mot de passe">
+            <button id="btn-login">Se connecter</button>
+            <div class="auth-switch">Nouveau ici ? <span id="go-to-signup">Inscris-toi</span></div>
+        </div>
 
-    if(!email || !password) return alert("Veuillez remplir tous les champs.");
+        <!-- Formulaire d'Inscription -->
+        <div id="signup-form" class="auth-card hidden">
+            <input type="text" id="signup-pseudo" placeholder="Nom d'utilisateur (Pseudo)">
+            <input type="email" id="signup-email" placeholder="Adresse e-mail">
+            <input type="password" id="signup-password" placeholder="Mot de passe (6 caractères min.)">
+            <button id="btn-signup">Créer mon compte</button>
+            <div class="auth-switch">Déjà un compte ? <span id="go-to-login">Se connecter</span></div>
+        </div>
+    </div>
 
-    try {
-        await signInWithEmailAndPassword(auth, email, password);
-    } catch (error) {
-        alert("Erreur de connexion : " + error.message);
-    }
-});
+    <!-- ================= ÉCRAN DE L'APPLICATION MULTI-VUES ================= -->
+    <div id="app-screen" class="hidden">
+        <header>
+            <h2>Darkgramme</h2>
+        </header>
 
-// --- FONCTION DE DÉCONNEXION ---
-document.getElementById('btn-logout').addEventListener('click', () => {
-    signOut(auth).then(() => {
-        alert("Vous avez été déconnecté.");
-    }).catch((error) => {
-        alert("Erreur lors de la déconnexion : " + error.message);
-    });
-});
+        <div class="container">
+            <!-- VUE 1 : FIL D'ACTUALITÉ (HOME) -->
+            <div id="view-home" class="view">
+                <div id="feed"><!-- Les publications apparaîtront ici --></div>
+            </div>
+
+            <!-- VUE 2 : BARRE DE RECHERCHE -->
+            <div id="view-search" class="view hidden">
+                <input type="text" id="search-bar" placeholder="🔍 Rechercher un utilisateur ou une légende...">
+                <div id="search-results"><!-- Résultats --></div>
+            </div>
+
+            <!-- VUE 3 : CRÉER UN POST -->
+            <div id="view-post" class="view hidden">
+                <div class="auth-card" style="text-align: left;">
+                    <label style="display:block; margin-bottom:8px; font-size:14px; color:#aaa;">Choisir un fichier multimédia :</label>
+                    <input type="file" id="post-file" accept="image/*,video/*">
+                    <input type="text" id="post-caption" placeholder="Écris une légende stylée...">
+                    <button id="btn-share">Partager la publication 🚀</button>
+                </div>
+            </div>
+
+            <!-- VUE 4 : MESSAGERIE DU QG -->
+            <div id="view-messages" class="view hidden">
+                <div id="msg-box" class="chat-box"><!-- Les bulles de chat s'afficheront ici --></div>
+                <div style="display: table; width: 100%;">
+                    <div style="display: table-cell; width: 80%;">
+                        <input type="text" id="msg-input" placeholder="Écris un message au QG..." style="margin-bottom:0;">
+                    </div>
+                    <div style="display: table-cell; width: 20%; padding-left: 8px; vertical-align: middle;">
+                        <button id="btn-send-msg" style="padding:12px 0;">Envoyer</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- VUE 5 : PROFIL -->
+            <div id="view-profile" class="view hidden">
+                <div class="profile-info">
+                    <img id="profile-avatar" src="https://via.placeholder.com/150" alt="Avatar">
+                    <div id="profile-pseudo">Utilisateur</div>
+                    <div id="profile-bio-text">Bienvenue sur mon Darkgramme !</div>
+                    <button id="btn-logout" class="btn-danger">Se déconnecter</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- BARRE DE NAVIGATION FIXE DU BAS -->
+        <div class="nav-bar">
+            <div class="nav-item active" data-view="home">🏠</div>
+            <div class="nav-item" data-view="search">🔍</div>
+            <div class="nav-item" data-view="post">📸</div>
+            <div class="nav-item" data-view="messages">💬</div>
+            <div class="nav-item" data-view="profile">👤</div>
+        </div>
+    </div>
+
+</body>
+</html>
