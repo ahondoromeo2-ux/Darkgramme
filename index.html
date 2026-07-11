@@ -1,354 +1,179 @@
-// --- IMPORTATIONS FIREBASE (VERSION WEB CDN) ---
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
-import { getFirestore, doc, setDoc, getDoc, collection, addDoc, query, orderBy, onSnapshot, updateDoc, arrayUnion, increment } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Darkgramme</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { background-color: #000; color: #fff; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
+        
+        /* Écrans de Connexion / Inscription */
+        .auth-container { padding: 30px 20px; max-width: 400px; margin: 50px auto; text-align: center; }
+        .auth-container h1 { font-size: 2.5rem; margin-bottom: 30px; letter-spacing: -1px; }
+        .auth-card { background: #111; padding: 25px; border-radius: 12px; border: 1px solid #222; }
+        input { width: 100%; padding: 12px; margin-bottom: 15px; background: #222; border: 1px solid #333; border-radius: 6px; color: #fff; font-size: 14px; }
+        input:focus { border-color: #555; outline: none; }
+        button { width: 100%; padding: 12px; background: #fff; color: #000; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; font-size: 14px; }
+        .auth-switch { margin-top: 20px; color: #aaa; font-size: 13px; }
+        .auth-switch span { color: #3498db; cursor: pointer; font-weight: bold; }
+        
+        /* Application Principale */
+        header { background: #000; padding: 15px; text-align: center; border-bottom: 1px solid #222; position: fixed; top: 0; width: 100%; z-index: 10; }
+        header h2 { font-size: 1.5rem; letter-spacing: -0.5px; }
+        .container { padding: 70px 15px 80px 15px; max-width: 500px; margin: 0 auto; }
+        .view { width: 100%; }
+        .hidden { display: none !important; }
+        
+        /* Fil d'actualité (Home) */
+        .post-card { background: #000; border: 1px solid #222; border-radius: 8px; margin-bottom: 20px; padding-bottom: 0; overflow: hidden; }
+        .post-header { display: flex; align-items: center; padding: 10px; gap: 10px; }
+        .post-avatar { width: 32px; height: 32px; border-radius: 50%; object-fit: cover; background: #333; }
+        .post-image { width: 100%; display: block; background: #111; }
+        .post-caption { padding: 5px 12px; font-size: 14px; line-height: 1.4; }
+        
+        /* Messagerie & Listes */
+        .chat-box { height: 50vh; overflow-y: auto; border: 1px solid #222; padding: 15px; margin-bottom: 15px; background: #0a0a0a; border-radius: 8px; display: flex; flex-direction: column; gap: 10px; }
+        .msg-bubble { padding: 10px 14px; border-radius: 18px; max-width: 80%; font-size: 14px; line-height: 1.4; word-break: break-word; }
+        .msg-me { background: #0095f6; color: #fff; align-self: flex-end; border-bottom-right-radius: 2px; }
+        .msg-them { background: #262626; color: #fff; align-self: flex-start; border-bottom-left-radius: 2px; }
+        .msg-sender-name { font-size: 11px; color: #aaa; margin-bottom: 2px; display: block; }
+        
+        /* Lecteur audio personnalisé restreint pour s'intégrer au chat nocturne */
+        audio { max-width: 100%; height: 35px; margin-top: 5px; }
+        
+        .list-item { display: flex; align-items: center; gap: 15px; padding: 12px; border: 1px solid #222; border-radius: 8px; margin-bottom: 10px; cursor: pointer; background: #0a0a0a; }
+        .list-item:hover { background: #111; }
+        .user-item-avatar { width: 40px; height: 40px; border-radius: 50%; object-fit: cover; background: #222; }
+        .search-res-item { display: flex; align-items: center; gap: 15px; padding: 12px; border-bottom: 1px solid #111; }
+        
+        /* Profil */
+        .profile-info { text-align: center; padding: 20px 0; border-bottom: 1px solid #222; margin-bottom: 20px; }
+        #profile-avatar { width: 80px; height: 80px; border-radius: 50%; object-fit: cover; margin-bottom: 10px; background: #333; }
+        #profile-pseudo { font-size: 1.2rem; font-weight: bold; margin-bottom: 5px; }
+        #profile-bio-text { color: #aaa; font-size: 14px; margin-bottom: 15px; }
+        .btn-danger { background: #ed4956; color: #fff; }
+        
+        /* Barre de Navigation du Bas */
+        .nav-bar { background: #000; border-top: 1px solid #222; position: fixed; bottom: 0; width: 100%; display: table; table-layout: fixed; height: 55px; z-index: 10; }
+        .nav-item { display: table-cell; text-align: center; vertical-align: middle; font-size: 22px; cursor: pointer; color: #8e8e8e; }
+        .nav-item.active { color: #fff; }
+    </style>
+</head>
+<body>
 
-// --- CONFIGURATION DE TON PROJET (DARKGRAMME-PRO) ---
-const firebaseConfig = {
-  apiKey: "AIzaSyDqfKtCjW0nXB8ZGkEYx_bHFmfAtMJKxxU",
-  authDomain: "darkgramme-pro.firebaseapp.com",
-  projectId: "darkgramme-pro",
-  storageBucket: "darkgramme-pro.firebasestorage.app",
-  messagingSenderId: "662519634699",
-  appId: "1:662519634699:web:dc68ed771121e81daa200e"
-};
+    <!-- ================= ÉCRAN D'AUTHENTIFICATION ================= -->
+    <div id="auth-screen" class="auth-container">
+        <h1>Darkgramme</h1>
+        
+        <!-- Formulaire de Connexion -->
+        <div id="login-form" class="auth-card">
+            <input type="email" id="login-email" placeholder="Adresse e-mail">
+            <input type="password" id="login-password" placeholder="Mot de passe">
+            <button id="btn-login">Se connecter</button>
+            <div class="auth-switch">Nouveau ici ? <span id="go-to-signup">Inscris-toi</span></div>
+        </div>
 
-// Initialisation des services
-const app = initializeApp(firebaseConfig);
-export const auth = getAuth(app);
-export const db = getFirestore(app);
+        <!-- Formulaire d'Inscription -->
+        <div id="signup-form" class="auth-card hidden">
+            <input type="text" id="signup-pseudo" placeholder="Nom d'utilisateur (Pseudo)">
+            <input type="email" id="signup-email" placeholder="Adresse e-mail">
+            <input type="password" id="signup-password" placeholder="Mot de passe (6 caractères min.)">
+            <button id="btn-signup">Créer mon compte</button>
+            <div class="auth-switch">Déjà un compte ? <span id="go-to-login">Se connecter</span></div>
+        </div>
+    </div>
 
-// Variables globales
-let pseudoConnecte = "Utilisateur";
-let avatarConnecte = "https://via.placeholder.com/150";
-let tousLesPosts = []; 
+    <!-- ================= ÉCRAN DE L'APPLICATION MULTI-VUES ================= -->
+    <div id="app-screen" class="hidden">
+        <header>
+            <h2 id="app-header-title">Darkgramme</h2>
+        </header>
 
-// --- COMPRESSION & CONVERSION DE L'IMAGE EN TEXTE (BASE64) ---
-function compresserEtConvertirEnBase64(file) {
-    return new Promise((resolve) => {
-        const reader = new FileReader();
-        reader.readAsDataURL(file);
-        reader.onload = (event) => {
-            const img = new Image();
-            img.src = event.target.result;
-            img.onload = () => {
-                const canvas = document.createElement('canvas');
-                const MAX_WIDTH = 400; 
-                let width = img.width;
-                let height = img.height;
+        <div class="container">
+            <!-- VUE 1 : FIL D'ACTUALITÉ (HOME) -->
+            <div id="view-home" class="view">
+                <div id="feed"><!-- Les publications apparaîtront ici --></div>
+            </div>
 
-                if (width > MAX_WIDTH) {
-                    height *= MAX_WIDTH / width;
-                    width = MAX_WIDTH;
-                }
-                canvas.width = width;
-                canvas.height = height;
+            <!-- VUE 2 : BARRE DE RECHERCHE -->
+            <div id="view-search" class="view hidden">
+                <input type="text" id="search-bar" placeholder="🔍 Rechercher un utilisateur ou une légende...">
+                <div id="search-results"><!-- Résultats --></div>
+            </div>
+
+            <!-- VUE 3 : CRÉER UN POST -->
+            <div id="view-post" class="view hidden">
+                <div class="auth-card" style="text-align: left;">
+                    <label style="display:block; margin-bottom:8px; font-size:14px; color:#aaa;">Choisir un fichier multimédia :</label>
+                    <input type="file" id="post-file" accept="image/*,video/*">
+                    <input type="text" id="post-caption" placeholder="Écris une légende stylée...">
+                    <button id="btn-share">Partager la publication 🚀</button>
+                </div>
+            </div>
+
+            <!-- VUE 4 : MESSAGERIE -->
+            <div id="view-messages" class="view hidden">
                 
-                const ctx = canvas.getContext('2d');
-                ctx.drawImage(img, 0, 0, width, height);
-                resolve(canvas.toDataURL('image/jpeg', 0.4)); 
-            };
-        };
-    });
-}
-
-// --- NAVIGATION INTERNE ---
-const navItems = document.querySelectorAll('.nav-item');
-const views = document.querySelectorAll('.view');
-
-function changerVue(targetView) {
-    views.forEach(view => view.classList.add('hidden'));
-    const vueCible = document.getElementById(`view-${targetView}`);
-    if (vueCible) vueCible.classList.remove('hidden');
-    
-    navItems.forEach(nav => {
-        nav.classList.remove('active');
-        if(nav.getAttribute('data-view') === targetView) {
-            nav.classList.add('active');
-        }
-    });
-}
-
-navItems.forEach(item => {
-    item.addEventListener('click', function() {
-        changerVue(this.getAttribute('data-view'));
-    });
-});
-
-// --- CHARGEMENT DU PROFIL ---
-async function chargerProfilUtilisateur(uid) {
-    try {
-        const docRef = doc(db, "users", uid);
-        const docSnap = await getDoc(docRef);
-        if (docSnap.exists()) {
-            const data = docSnap.data();
-            pseudoConnecte = data.pseudo;
-            avatarConnecte = data.photoProfil || "https://via.placeholder.com/150";
-            document.getElementById('profile-pseudo').innerText = pseudoConnecte;
-            document.getElementById('profile-bio-text').innerText = data.bio;
-            document.getElementById('profile-avatar').src = avatarConnecte;
-        }
-    } catch (error) {
-        console.error("Erreur profil :", error);
-    }
-}
-
-// --- EN DIRECT : FIL D'ACTUALITÉ (AVEC LIKES ET COMMENTAIRES) ---
-function ecouterLeFilActualite() {
-    const q = query(collection(db, "posts"), orderBy("date", "desc"));
-    onSnapshot(q, (snapshot) => {
-        const feed = document.getElementById('feed');
-        if(!feed) return;
-        feed.innerHTML = "";
-        tousLesPosts = [];
-
-        snapshot.forEach((documentSnap) => {
-            const post = documentSnap.data();
-            const postId = documentSnap.id;
-            tousLesPosts.push({ ...post, id: postId }); 
-            
-            // Génération de la liste des commentaires existants
-            let listCommentsHTML = "";
-            if (post.comments && post.comments.length > 0) {
-                post.comments.forEach(c => {
-                    listCommentsHTML += `<p style="margin-bottom:4px; font-size:13px;"><strong style="color:#fff;">${c.pseudo} :</strong> ${c.texte}</p>`;
-                });
-            }
-
-            const postEl = document.createElement('div');
-            postEl.classList.add('post-card');
-            postEl.innerHTML = `
-                <div class="post-header">
-                    <img src="${post.avatar}" class="post-avatar">
-                    <strong>${post.pseudo}</strong>
-                </div>
-                <img src="${post.imageUrl}" class="post-image">
-                
-                <!-- Zone d'interactions -->
-                <div style="padding: 10px 12px 5px 12px; display:flex; gap:15px; align-items:center;">
-                    <button class="btn-like" data-id="${postId}" style="width:auto; background:none; color:#ff4757; font-size:18px; padding:0; text-align:left;">❤️ ${post.likes || 0}</button>
-                </div>
-
-                <div class="post-caption">
-                    <strong>${post.pseudo}</strong> ${post.caption}
-                </div>
-
-                <!-- Section des Commentaires -->
-                <div style="padding: 10px 12px; border-top: 1px solid #111; background:#050505;">
-                    <div style="max-height:100px; overflow-y:auto; margin-bottom:8px; color:#aaa;">
-                        ${listCommentsHTML || '<p style="font-size:12px; color:#555;">Aucun commentaire...</p>'}
+                <!-- Liste des contacts -->
+                <div id="chat-channels-list">
+                    <h3 style="margin-bottom: 15px;">Discussions</h3>
+                    <div class="list-item" id="channel-global">
+                        <div class="user-item-avatar" style="display:flex; align-items:center; justify-content:center; background:#222; font-size:18px;">📢</div>
+                        <div>
+                            <strong>Le QG de Darkgramme</strong><br>
+                            <small style="color:#aaa;">Salon de discussion public</small>
+                        </div>
                     </div>
-                    <div style="display:flex; gap:5px;">
-                        <input type="text" id="input-comm-${postId}" placeholder="Ajouter un commentaire..." style="margin-bottom:0; padding:6px; font-size:12px;">
-                        <button class="btn-comment" data-id="${postId}" style="width:auto; padding:6px 12px; font-size:12px; background:#222; color:#fff;">Publier</button>
+                    <h4 style="margin: 20px 0 10px 0; color:#555; font-size:12px; text-transform:uppercase; letter-spacing:1px;">Messages Privés (DMs)</h4>
+                    <div id="dm-users-container"><!-- Injecté via JS --></div>
+                </div>
+
+                <!-- Fenêtre de Chat active -->
+                <div id="chat-room-window" class="hidden">
+                    <button id="btn-back-to-channels" style="width:auto; padding:6px 12px; font-size:12px; background:#222; color:#fff; margin-bottom:10px;">⬅️ Retour</button>
+                    <h3 id="chat-room-title" style="margin-bottom:10px; font-size:16px; color:#3498db;">Salon</h3>
+                    
+                    <div id="msg-box" class="chat-box"><!-- Les bulles de chat s'afficheront ici --></div>
+                    
+                    <!-- Ligne d'envoi améliorée avec Micro + Texte + Envoyer -->
+                    <div style="display: table; width: 100%;">
+                        <div style="display: table-cell; width: 65%;">
+                            <input type="text" id="msg-input" placeholder="Écris ton message secret..." style="margin-bottom:0;">
+                        </div>
+                        <div style="display: table-cell; width: 15%; padding-left: 5px; vertical-align: middle;">
+                            <button id="btn-record-audio" style="padding:12px 0; background:#262626; color:#fff;">🎙️</button>
+                        </div>
+                        <div style="display: table-cell; width: 20%; padding-left: 5px; vertical-align: middle;">
+                            <button id="btn-send-msg" style="padding:12px 0;">Envoyer</button>
+                        </div>
                     </div>
                 </div>
-            `;
-            feed.appendChild(postEl);
-        });
-    });
-}
 
-// --- ÉCOUTEUR DES CLICS SUR LE FIL (GESTION DES BOUTONS LIKE & COMMENTAIRES) ---
-const feedContainer = document.getElementById('feed');
-if(feedContainer) {
-    feedContainer.addEventListener('click', async (e) => {
-        // Clic sur le bouton Like
-        if (e.target.classList.contains('btn-like')) {
-            const idDoc = e.target.getAttribute('data-id');
-            const postRef = doc(db, "posts", idDoc);
-            try {
-                await updateDoc(postRef, { likes: increment(1) });
-            } catch (err) { console.error(err); }
-        }
+            </div>
 
-        // Clic sur le bouton Publier Commentaire
-        if (e.target.classList.contains('btn-comment')) {
-            const idDoc = e.target.getAttribute('data-id');
-            const inputField = document.getElementById(`input-comm-${idDoc}`);
-            const texteComm = inputField.value.trim();
-            if (!texteComm) return;
-
-            const postRef = doc(db, "posts", idDoc);
-            try {
-                await updateDoc(postRef, {
-                    comments: arrayUnion({
-                        pseudo: pseudoConnecte,
-                        texte: texteComm,
-                        date: new Date().toISOString()
-                    })
-                });
-                inputField.value = "";
-            } catch (err) { console.error(err); }
-        }
-    });
-}
-
-// --- EN DIRECT : BARRE DE RECHERCHE ---
-const searchBar = document.getElementById('search-bar');
-if(searchBar) {
-    searchBar.addEventListener('input', (e) => {
-        const motCle = e.target.value.toLowerCase().trim();
-        const resultsContainer = document.getElementById('search-results');
-        resultsContainer.innerHTML = "";
-
-        if(!motCle) return;
-
-        const postsFiltres = tousLesPosts.filter(post => 
-            post.caption.toLowerCase().includes(motCle) || post.pseudo.toLowerCase().includes(motCle)
-        );
-
-        postsFiltres.forEach(post => {
-            const resEl = document.createElement('div');
-            resEl.classList.add('search-res-item');
-            resEl.innerHTML = `
-                <img src="${post.imageUrl}" style="width:50px; height:50px; object-fit:cover; border-radius:4px; background:#111;">
-                <div>
-                    <strong>${post.pseudo}</strong><br>
-                    <small style="color:#aaa;">${post.caption}</small>
+            <!-- VUE 5 : PROFIL -->
+            <div id="view-profile" class="view hidden">
+                <div class="profile-info">
+                    <img id="profile-avatar" src="https://via.placeholder.com/150" alt="Avatar">
+                    <div id="profile-pseudo">Utilisateur</div>
+                    <div id="profile-bio-text">Bienvenue sur mon Darkgramme !</div>
+                    <button id="btn-logout" class="btn-danger">Se déconnecter</button>
                 </div>
-            `;
-            resultsContainer.appendChild(resEl);
-        });
-    });
-}
+            </div>
+        </div>
 
-// --- EN DIRECT : MESSAGERIE DU QG ---
-function ecouterLaMessagerie() {
-    const q = query(collection(db, "messages"), orderBy("date", "asc"));
-    onSnapshot(q, (snapshot) => {
-        const msgBox = document.getElementById('msg-box');
-        if(!msgBox) return;
-        msgBox.innerHTML = "";
+        <!-- BARRE DE NAVIGATION -->
+        <div class="nav-bar">
+            <div class="nav-item active" data-view="home">🏠</div>
+            <div class="nav-item" data-view="search">🔍</div>
+            <div class="nav-item" data-view="post">📸</div>
+            <div class="nav-item" data-view="messages">💬</div>
+            <div class="nav-item" data-view="profile">👤</div>
+        </div>
+    </div>
 
-        snapshot.forEach((doc) => {
-            const msg = doc.data();
-            const msgEl = document.createElement('div');
-            const estMoi = msg.pseudo === pseudoConnecte;
-            
-            msgEl.classList.add('msg-bubble', estMoi ? 'msg-me' : 'msg-them');
-            msgEl.innerHTML = `
-                <span class="msg-sender-name">${msg.pseudo}</span>
-                ${msg.texte}
-            `;
-            msgBox.appendChild(msgEl);
-        });
-        msgBox.scrollTop = msgBox.scrollHeight;
-    });
-}
-
-const btnSendMsg = document.getElementById('btn-send-msg');
-if(btnSendMsg) {
-    btnSendMsg.addEventListener('click', async () => {
-        const input = document.getElementById('msg-input');
-        const texte = input.value.trim();
-        if(!texte) return;
-
-        try {
-            await addDoc(collection(db, "messages"), {
-                pseudo: pseudoConnecte,
-                texte: texte,
-                date: new Date()
-            });
-            input.value = "";
-        } catch (error) {
-            console.error("Erreur d'envoi :", error);
-        }
-    });
-}
-
-// --- PUBLICATION D'UNE PHOTO ---
-const btnShare = document.getElementById('btn-share');
-if(btnShare) {
-    btnShare.addEventListener('click', async () => {
-        const fileInput = document.getElementById('post-file');
-        const caption = document.getElementById('post-caption').value.trim();
-        const user = auth.currentUser;
-
-        if (!user) return alert("Connecte-toi d'abord.");
-        if (!fileInput.files || fileInput.files.length === 0) return alert("Choisis une photo dans ton téléphone !");
-
-        try {
-            alert("Compression de la photo en cours... Patientez ⏳");
-            const photoBase64 = await compresserEtConvertirEnBase64(fileInput.files[0]);
-
-            await addDoc(collection(db, "posts"), {
-                uid: user.uid,
-                pseudo: pseudoConnecte,
-                avatar: avatarConnecte,
-                imageUrl: photoBase64, 
-                caption: caption,
-                likes: 0,
-                comments: [],
-                date: new Date()
-            });
-
-            alert("Posté avec succès sur Darkgramme ! 🚀");
-            fileInput.value = "";
-            document.getElementById('post-caption').value = "";
-            changerVue('home');
-        } catch (error) {
-            alert("Erreur lors du partage : " + error.message);
-        }
-    });
-}
-
-// --- ÉCOUTEUR D'ÉTAT DE CONNEXION ---
-const authScreen = document.getElementById('auth-screen');
-const appScreen = document.getElementById('app-screen');
-
-onAuthStateChanged(auth, (user) => {
-    if (user) {
-        if(authScreen) authScreen.classList.add('hidden');
-        if(appScreen) appScreen.classList.remove('hidden');
-        chargerProfilUtilisateur(user.uid);
-        ecouterLeFilActualite();
-        ecouterLaMessagerie();
-    } else {
-        if(authScreen) authScreen.classList.remove('hidden');
-        if(appScreen) appScreen.classList.add('hidden');
-    }
-});
-
-// --- GESTION DE L'AUTHENTIFICATION ---
-const loginForm = document.getElementById('login-form');
-const signupForm = document.getElementById('signup-form');
-
-if(document.getElementById('go-to-signup')) {
-    document.getElementById('go-to-signup').addEventListener('click', () => {
-        loginForm.classList.add('hidden'); signupForm.classList.remove('hidden');
-    });
-}
-if(document.getElementById('go-to-login')) {
-    document.getElementById('go-to-login').addEventListener('click', () => {
-        signupForm.classList.add('hidden'); loginForm.classList.remove('hidden');
-    });
-}
-
-if(document.getElementById('btn-signup')) {
-    document.getElementById('btn-signup').addEventListener('click', async () => {
-        const pseudo = document.getElementById('signup-pseudo').value.trim();
-        const email = document.getElementById('signup-email').value.trim();
-        const password = document.getElementById('signup-password').value;
-        if(!pseudo || !email || !password) return alert("Remplis tous les champs.");
-        try {
-            const credential = await createUserWithEmailAndPassword(auth, email, password);
-            await setDoc(doc(db, "users", credential.user.uid), {
-                pseudo: pseudo, email: email, photoProfil: "https://via.placeholder.com/150", bio: "Nouveau sur Darkgramme !", dateCreation: new Date()
-            });
-            alert("Compte créé ! 🎯");
-        } catch (e) { alert(e.message); }
-    });
-}
-
-if(document.getElementById('btn-login')) {
-    document.getElementById('btn-login').addEventListener('click', async () => {
-        const email = document.getElementById('login-email').value.trim();
-        const password = document.getElementById('login-password').value;
-        try { await signInWithEmailAndPassword(auth, email, password); } catch (e) { alert(e.message); }
-    });
-}
-
-if(document.getElementById('btn-logout')) {
-    document.getElementById('btn-logout').addEventListener('click', () => { signOut(auth); });
-}
+    <!-- Script principal -->
+    <script type="module" src="app.js"></script>
+</body>
+</html>
