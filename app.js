@@ -1,495 +1,64 @@
-// --- IMPORTATIONS FIREBASE (VERSION WEB CDN) ---
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
-import { getFirestore, doc, setDoc, getDoc, collection, addDoc, query, orderBy, onSnapshot, updateDoc, arrayUnion, increment, getDocs } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+require('dotenv').config();
+const express = require('express');
+const fs = require('fs');
+const path = require('path');
 
-// --- CONFIGURATION DE TON PROJET (DARKGRAMME-PRO) ---
-const firebaseConfig = {
-  apiKey: "AIzaSyDqfKtCjW0nXB8ZGkEYx_bHFmfAtMJKxxU",
-  authDomain: "darkgramme-pro.firebaseapp.com",
-  projectId: "darkgramme-pro",
-  storageBucket: "darkgramme-pro.firebasestorage.app",
-  messagingSenderId: "662519634699",
-  appId: "1:662519634699:web:dc68ed771121e81daa200e"
-};
+const app = express();
+const PORT = process.env.PORT || 3000;
 
-// Initialisation des services
-const app = initializeApp(firebaseConfig);
-export const auth = getAuth(app);
-export const db = getFirestore(app);
+// Permet à l'application de comprendre le JSON et les formulaires
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
 
-// Variables globales
-let pseudoConnecte = "Utilisateur";
-let avatarConnecte = "https://via.placeholder.com/150";
-let tousLesPosts = []; 
-let currentChatId = "global"; 
-let messageUnsubscribe = null; 
+// Sert les fichiers statiques (comme ton index.html)
+app.use(express.static(path.join(__dirname)));
 
-// Variables pour l'enregistreur vocal
-let mediaRecorder = null;
-let audioChunks = [];
-let isRecording = false;
-let audioStream = null;
+// 1. Route pour lire les observations existantes
+app.get('/api/observations', (req, res) => {
+    fs.readFile('observations.json', 'utf8', (err, data) => {
+        if (err) {
+            return res.status(500).json({ error: "Impossible de lire les observations." });
+        }
+        res.json(JSON.parse(data));
+    });
+});
 
-// --- COMPRESSION & CONVERSION DE L'IMAGE EN TEXTE (BASE64) ---
-function compresserEtConvertirEnBase64(file) {
-    return new Promise((resolve) => {
-        const reader = new FileReader();
-        reader.readAsDataURL(file);
-        reader.onload = (event) => {
-            const img = new Image();
-            img.src = event.target.result;
-            img.onload = () => {
-                const canvas = document.createElement('canvas');
-                const MAX_WIDTH = 400; 
-                let width = img.width;
-                let height = img.height;
+// 2. Route pour enregistrer une nouvelle observation
+app.post('/api/observations', (req, res) => {
+    const nouvelleNote = req.body.note;
 
-                if (width > MAX_WIDTH) {
-                    height *= MAX_WIDTH / width;
-                    width = MAX_WIDTH;
-                }
-                canvas.width = width;
-                canvas.height = height;
-                
-                const ctx = canvas.getContext('2d');
-                ctx.drawImage(img, 0, 0, width, height);
-                resolve(canvas.toDataURL('image/jpeg', 0.4)); 
-            };
+    if (!nouvelleNote || nouvelleNote.trim() === "") {
+        return res.status(400).json({ error: "La note ne peut pas être vide." });
+    }
+
+    // Lire le fichier actuel
+    fs.readFile('observations.json', 'utf8', (err, data) => {
+        let observations = [];
+        if (!err && data) {
+            observations = JSON.parse(data);
+        }
+
+        // Créer le nouvel objet avec la date actuelle
+        const nouvelleEntree = {
+            date: new Date().toISOString().replace('T', ' ').substring(0, 16),
+            type: "Note utilisateur",
+            note: nouvelleNote
         };
-    });
-}
 
-// --- NAVIGATION INTERNE ---
-const navItems = document.querySelectorAll('.nav-item');
-const views = document.querySelectorAll('.view');
+        // L'ajouter à la liste
+        observations.push(nouvelleEntree);
 
-function changerVue(targetView) {
-    views.forEach(view => view.classList.add('hidden'));
-    const vueCible = document.getElementById(`view-${targetView}`);
-    if (vueCible) vueCible.classList.remove('hidden');
-    
-    navItems.forEach(nav => {
-        nav.classList.remove('active');
-        if(nav.getAttribute('data-view') === targetView) {
-            nav.classList.add('active');
-        }
-    });
-
-    if (targetView !== 'messages') {
-        document.getElementById('chat-room-window').classList.add('hidden');
-        document.getElementById('chat-channels-list').classList.remove('hidden');
-        if (messageUnsubscribe) messageUnsubscribe();
-        arreterEnregistrementSilencieux();
-    }
-}
-
-navItems.forEach(item => {
-    item.addEventListener('click', function() {
-        changerVue(this.getAttribute('data-view'));
+        // Réécrire le fichier avec la nouvelle liste
+        fs.writeFile('observations.json', JSON.stringify(observations, null, 2), (err) => {
+            if (err) {
+                return res.status(500).json({ error: "Erreur lors de l'enregistrement." });
+            }
+            res.json({ success: true, message: "Observation consignée !" });
+        });
     });
 });
 
-function arreterEnregistrementSilencieux() {
-    if (isRecording && mediaRecorder) {
-        mediaRecorder.stop();
-        isRecording = false;
-        const btnRecord = document.getElementById('btn-record-audio');
-        if(btnRecord) {
-            btnRecord.innerText = "🎙️";
-            btnRecord.style.background = "#262626";
-        }
-    }
-}
-
-// --- CHARGEMENT DU PROFIL ---
-async function chargerProfilUtilisateur(uid) {
-    try {
-        const docRef = doc(db, "users", uid);
-        const docSnap = await getDoc(docRef);
-        if (docSnap.exists()) {
-            const data = docSnap.data();
-            pseudoConnecte = data.pseudo;
-            avatarConnecte = data.photoProfil || "https://via.placeholder.com/150";
-            document.getElementById('profile-pseudo').innerText = pseudoConnecte;
-            document.getElementById('profile-bio-text').innerText = data.bio;
-            document.getElementById('profile-avatar').src = avatarConnecte;
-        }
-    } catch (error) {
-        console.error("Erreur profil :", error);
-    }
-}
-
-// --- FIL D'ACTUALITÉ ---
-function ecouterLeFilActualite() {
-    const q = query(collection(db, "posts"), orderBy("date", "desc"));
-    onSnapshot(q, (snapshot) => {
-        const feed = document.getElementById('feed');
-        if(!feed) return;
-        feed.innerHTML = "";
-        tousLesPosts = [];
-
-        snapshot.forEach((documentSnap) => {
-            const post = documentSnap.data();
-            const postId = documentSnap.id;
-            tousLesPosts.push({ ...post, id: postId }); 
-            
-            let listCommentsHTML = "";
-            if (post.comments && post.comments.length > 0) {
-                post.comments.forEach(c => {
-                    listCommentsHTML += `<p style="margin-bottom:4px; font-size:13px;"><strong style="color:#fff;">${c.pseudo} :</strong> ${c.texte}</p>`;
-                });
-            }
-
-            const postEl = document.createElement('div');
-            postEl.classList.add('post-card');
-            postEl.innerHTML = `
-                <div class="post-header">
-                    <img src="${post.avatar}" class="post-avatar">
-                    <strong>${post.pseudo}</strong>
-                </div>
-                <img src="${post.imageUrl}" class="post-image">
-                
-                <div style="padding: 10px 12px 5px 12px; display:flex; gap:15px; align-items:center;">
-                    <button class="btn-like" data-id="${postId}" style="width:auto; background:none; color:#ff4757; font-size:18px; padding:0; text-align:left;">❤️ ${post.likes || 0}</button>
-                </div>
-
-                <div class="post-caption">
-                    <strong>${post.pseudo}</strong> ${post.caption}
-                </div>
-
-                <div style="padding: 10px 12px; border-top: 1px solid #111; background:#050505;">
-                    <div style="max-height:100px; overflow-y:auto; margin-bottom:8px; color:#aaa;">
-                        ${listCommentsHTML || '<p style="font-size:12px; color:#555;">Aucun commentaire...</p>'}
-                    </div>
-                    <div style="display:flex; gap:5px;">
-                        <input type="text" id="input-comm-${postId}" placeholder="Ajouter un commentaire..." style="margin-bottom:0; padding:6px; font-size:12px;">
-                        <button class="btn-comment" data-id="${postId}" style="width:auto; padding:6px 12px; font-size:12px; background:#222; color:#fff;">Publier</button>
-                    </div>
-                </div>
-            `;
-            feed.appendChild(postEl);
-        });
-    });
-}
-
-const feedContainer = document.getElementById('feed');
-if(feedContainer) {
-    feedContainer.addEventListener('click', async (e) => {
-        if (e.target.classList.contains('btn-like')) {
-            const idDoc = e.target.getAttribute('data-id');
-            await updateDoc(doc(db, "posts", idDoc), { likes: increment(1) });
-        }
-
-        if (e.target.classList.contains('btn-comment')) {
-            const idDoc = e.target.getAttribute('data-id');
-            const inputField = document.getElementById(`input-comm-${idDoc}`);
-            const texteComm = inputField.value.trim();
-            if (!texteComm) return;
-
-            await updateDoc(doc(db, "posts", idDoc), {
-                comments: arrayUnion({
-                    pseudo: pseudoConnecte,
-                    texte: texteComm,
-                    date: new Date().toISOString()
-                })
-            });
-            inputField.value = "";
-        }
-    });
-}
-
-// --- MOTEUR DE RECHERCHE ---
-const searchBar = document.getElementById('search-bar');
-if(searchBar) {
-    searchBar.addEventListener('input', (e) => {
-        const motCle = e.target.value.toLowerCase().trim();
-        const resultsContainer = document.getElementById('search-results');
-        resultsContainer.innerHTML = "";
-
-        if(!motCle) return;
-
-        const postsFiltres = tousLesPosts.filter(post => 
-            post.caption.toLowerCase().includes(motCle) || post.pseudo.toLowerCase().includes(motCle)
-        );
-
-        postsFiltres.forEach(post => {
-            const resEl = document.createElement('div');
-            resEl.classList.add('search-res-item');
-            resEl.innerHTML = `
-                <img src="${post.imageUrl}" style="width:50px; height:50px; object-fit:cover; border-radius:4px; background:#111;">
-                <div>
-                    <strong>${post.pseudo}</strong><br>
-                    <small style="color:#aaa;">${post.caption}</small>
-                </div>
-            `;
-            resultsContainer.appendChild(resEl);
-        });
-    });
-}
-
-// --- MESSAGERIE (AVEC RECONNAISSANCE DES MESSAGES VOCAUX) ---
-async function chargerListeUtilisateursDMs(monUid) {
-    const container = document.getElementById('dm-users-container');
-    if(!container) return;
-    container.innerHTML = "";
-
-    try {
-        const querySnapshot = await getDocs(collection(db, "users"));
-        querySnapshot.forEach((docSnap) => {
-            const user = docSnap.data();
-            const userId = docSnap.id;
-
-            if (userId !== monUid) {
-                const userEl = document.createElement('div');
-                userEl.classList.add('list-item');
-                userEl.innerHTML = `
-                    <img src="${user.photoProfil || 'https://via.placeholder.com/150'}" class="user-item-avatar">
-                    <div>
-                        <strong>${user.pseudo}</strong><br>
-                        <small style="color:#666;">Cliquer pour envoyer un message secret</small>
-                    </div>
-                `;
-                userEl.addEventListener('click', () => {
-                    const dmChatId = monUid < userId ? `${monUid}_${userId}` : `${userId}_${monUid}`;
-                    ouvrirSalonDeChat(dmChatId, `Discussion privée avec ${user.pseudo}`);
-                });
-                container.appendChild(userEl);
-            }
-        });
-    } catch (error) {
-        console.error(error);
-    }
-}
-
-function ouvrirSalonDeChat(chatId, titre) {
-    currentChatId = chatId;
-    document.getElementById('chat-room-title').innerText = titre;
-    document.getElementById('chat-channels-list').classList.add('hidden');
-    document.getElementById('chat-room-window').classList.remove('hidden');
-    ecouterLaMessagerie(chatId);
-}
-
-function ecouterLaMessagerie(chatId) {
-    if (messageUnsubscribe) messageUnsubscribe();
-
-    const q = query(collection(db, "chats", chatId, "messages"), orderBy("date", "asc"));
-    messageUnsubscribe = onSnapshot(q, (snapshot) => {
-        const msgBox = document.getElementById('msg-box');
-        if(!msgBox) return;
-        msgBox.innerHTML = "";
-
-        snapshot.forEach((doc) => {
-            const msg = doc.data();
-            const msgEl = document.createElement('div');
-            const estMoi = msg.pseudo === pseudoConnecte;
-            
-            msgEl.classList.add('msg-bubble', estMoi ? 'msg-me' : 'msg-them');
-            
-            // Si le message est un vocal, on affiche le player audio HTML5 natif
-            let renduContenu = msg.texte;
-            if (msg.type === "audio") {
-                renduContenu = `<audio controls src="${msg.audioData}"></audio>`;
-            }
-            
-            msgEl.innerHTML = `
-                <span class="msg-sender-name">${msg.pseudo}</span>
-                ${renduContenu}
-            `;
-            msgBox.appendChild(msgEl);
-        });
-        msgBox.scrollTop = msgBox.scrollHeight;
-    });
-}
-
-const btnBack = document.getElementById('btn-back-to-channels');
-if(btnBack) {
-    btnBack.addEventListener('click', () => {
-        if (messageUnsubscribe) messageUnsubscribe();
-        arreterEnregistrementSilencieux();
-        document.getElementById('chat-room-window').classList.add('hidden');
-        document.getElementById('chat-channels-list').classList.remove('hidden');
-    });
-}
-
-const btnGlobal = document.getElementById('channel-global');
-if(btnGlobal) {
-    btnGlobal.addEventListener('click', () => {
-        ouvrirSalonDeChat("global", "Le QG de Darkgramme 📢");
-    });
-}
-
-const btnSendMsg = document.getElementById('btn-send-msg');
-if(btnSendMsg) {
-    btnSendMsg.addEventListener('click', async () => {
-        const input = document.getElementById('msg-input');
-        const texte = input.value.trim();
-        if(!texte) return;
-
-        try {
-            await addDoc(collection(db, "chats", currentChatId, "messages"), {
-                pseudo: pseudoConnecte,
-                texte: texte,
-                type: "text",
-                date: new Date()
-            });
-            input.value = "";
-        } catch (error) { console.error(error); }
-    });
-}
-
-// --- ENREGISTREUR DES MESSAGES VOCAUX 🎙️ ---
-const btnRecordAudio = document.getElementById('btn-record-audio');
-if(btnRecordAudio) {
-    btnRecordAudio.addEventListener('click', async () => {
-        if (!isRecording) {
-            // Lancement de l'enregistrement
-            if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-                return alert("Ton téléphone bloque ou ne supporte pas l'accès micro sur ce navigateur.");
-            }
-            
-            try {
-                audioStream = await navigator.mediaDevices.getUserMedia({ audio: true });
-                mediaRecorder = new MediaRecorder(audioStream);
-                audioChunks = [];
-
-                mediaRecorder.ondataavailable = (event) => {
-                    audioChunks.push(event.data);
-                };
-
-                mediaRecorder.onstop = () => {
-                    const audioBlob = new Blob(audioChunks, { type: 'audio/mp3' });
-                    const reader = new FileReader();
-                    reader.readAsDataURL(audioBlob);
-                    reader.onloadend = async () => {
-                        const base64Audio = reader.result;
-                        // Envoi immédiat du vocal sur Firebase
-                        try {
-                            await addDoc(collection(db, "chats", currentChatId, "messages"), {
-                                pseudo: pseudoConnecte,
-                                type: "audio",
-                                audioData: base64Audio,
-                                date: new Date()
-                            });
-                        } catch (err) { console.error(err); }
-                    };
-                    
-                    // On coupe proprement le capteur du micro
-                    if (audioStream) {
-                        audioStream.getTracks().forEach(track => track.stop());
-                    }
-                };
-
-                mediaRecorder.start();
-                isRecording = true;
-                btnRecordAudio.innerText = "🛑";
-                btnRecordAudio.style.background = "#ed4956"; // Rouge enregistrement
-            } catch (err) {
-                alert("Erreur d'accès au micro : " + err.message);
-            }
-        } else {
-            // Arrêt et envoi automatique
-            mediaRecorder.stop();
-            isRecording = false;
-            btnRecordAudio.innerText = "🎙️";
-            btnRecordAudio.style.background = "#262626";
-        }
-    });
-}
-
-// --- PUBLICATION D'UNE PHOTO ---
-const btnShare = document.getElementById('btn-share');
-if(btnShare) {
-    btnShare.addEventListener('click', async () => {
-        const fileInput = document.getElementById('post-file');
-        const caption = document.getElementById('post-caption').value.trim();
-        const user = auth.currentUser;
-
-        if (!user) return alert("Connecte-toi d'abord.");
-        if (!fileInput.files || fileInput.files.length === 0) return alert("Choisis une photo !");
-
-        try {
-            alert("Compression en cours... Patientez ⏳");
-            const photoBase64 = await compresserEtConvertirEnBase64(fileInput.files[0]);
-
-            await addDoc(collection(db, "posts"), {
-                uid: user.uid,
-                pseudo: pseudoConnecte,
-                avatar: avatarConnecte,
-                imageUrl: photoBase64, 
-                caption: caption,
-                likes: 0,
-                comments: [],
-                date: new Date()
-            });
-
-            alert("Posté avec succès ! 🚀");
-            fileInput.value = "";
-            document.getElementById('post-caption').value = "";
-            changerVue('home');
-        } catch (error) { alert(error.message); }
-    });
-}
-
-// --- ÉCOUTEUR D'ÉTAT DE CONNEXION ---
-onAuthStateChanged(auth, (user) => {
-    const authScreen = document.getElementById('auth-screen');
-    const appScreen = document.getElementById('app-screen');
-    
-    if (user) {
-        if(authScreen) authScreen.classList.add('hidden');
-        if(appScreen) appScreen.classList.remove('hidden');
-        
-        chargerProfilUtilisateur(user.uid);
-        ecouterLeFilActualite();
-        chargerListeUtilisateursDMs(user.uid);
-    } else {
-        if(authScreen) authScreen.classList.remove('hidden');
-        if(appScreen) appScreen.classList.add('hidden');
-        if(messageUnsubscribe) messageUnsubscribe();
-        arreterEnregistrementSilencieux();
-    }
+// Démarrage du serveur
+app.listen(PORT, () => {
+    console.log(`Serveur Darkgramme démarré sur le port ${PORT}`);
 });
-
-// --- ENREGISTREMENTS DES BOUTONS DE COMPTE ---
-const loginForm = document.getElementById('login-form');
-const signupForm = document.getElementById('signup-form');
-
-if(document.getElementById('go-to-signup')) {
-    document.getElementById('go-to-signup').addEventListener('click', () => {
-        loginForm.classList.add('hidden'); signupForm.classList.remove('hidden');
-    });
-}
-if(document.getElementById('go-to-login')) {
-    document.getElementById('go-to-login').addEventListener('click', () => {
-        signupForm.classList.add('hidden'); loginForm.classList.remove('hidden');
-    });
-}
-
-if(document.getElementById('btn-signup')) {
-    document.getElementById('btn-signup').addEventListener('click', async () => {
-        const pseudo = document.getElementById('signup-pseudo').value.trim();
-        const email = document.getElementById('signup-email').value.trim();
-        const password = document.getElementById('signup-password').value;
-        if(!pseudo || !email || !password) return alert("Remplis tous les champs.");
-        try {
-            const credential = await createUserWithEmailAndPassword(auth, email, password);
-            await setDoc(doc(db, "users", credential.user.uid), {
-                pseudo: pseudo, email: email, photoProfil: "https://via.placeholder.com/150", bio: "Nouveau sur Darkgramme !", dateCreation: new Date()
-            });
-            alert("Compte créé ! 🎯");
-        } catch (e) { alert(e.message); }
-    });
-}
-
-if(document.getElementById('btn-login')) {
-    document.getElementById('btn-login').addEventListener('click', async () => {
-        const email = document.getElementById('login-email').value.trim();
-        const password = document.getElementById('login-password').value;
-        try { await signInWithEmailAndPassword(auth, email, password); } catch (e) { alert(e.message); }
-    });
-}
-
-if(document.getElementById('btn-logout')) {
-    document.getElementById('btn-logout').addEventListener('click', () => { signOut(auth); });
-}
